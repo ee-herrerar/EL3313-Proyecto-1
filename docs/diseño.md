@@ -1,3 +1,8 @@
+### Planteamiento de diseño
+## Circuito discreto
+Este sistema se encarga de seleccionas psudoaleatoriamente un led y lo enciende, funciona usando un registro de desplazamiento con retroalimentación lineal para generar un numero de tres bits cada vez que la fpga lo indique, este funciona con 3 flip flops en serie donde la entrada del primero es la salida de una compuerta xor cuyas entradas son las salidas de los otros flip flops, cada vez que la fpga envia la señal esta llega a la entrada de reloj para que los bits de salida que dan los fliop flops se desplazan generando asi un numero de tres bits. Una vez genrado el numero de tres bits, este pasa por el decodificador 74LS138 el cual dependiendo del numero binario generado anteriormente enciende una de las 8 posibles entradas, estas entradas se conectan a los 8 leds. Por ultimo mediante un 74LS165 se empaqueta una secuencia de 8 bits que se envian a la fpga para indicarle cual posicion actual tiene al led encendido.
+<img width="636" height="559" alt="Captura de pantalla 2026-08-12 113503" src="https://github.com/user-attachments/assets/40c7f6c1-4d64-4c0e-9d0e-f3c6ea0d0a36" />
+
 ## Subsistema de Control
 
 ### Descripción General
