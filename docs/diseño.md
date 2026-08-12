@@ -1,4 +1,45 @@
-### Planteamiento de diseño
+## Aspectos Considerados Para El Proyecto
+**Uso de Basys 3**
+
+Considerando el uso de la Basys 3, esta debe de coordinar:
+- Control del juego
+- Metraje de tiempos
+- Registro y despliegue de puntajes
+
+**Uso de botones externos**
+
+Dado que los pulsadores externos están en un dominio de reloj independiente y generan señales asíncronas, antes de pasar por el módulo de debounce, la señal debe atravesar un sincronizador de dos etapas. 
+Para la lógica de botones es de requerido de un debouncer o antirebote, por lo que será implementado de la siguiente forma:
+```verilog
+module debounce(
+    input clk,          // Reloj de 100 MHz de la Basys 3 (Pin W5)
+    input btn_in,       // Entrada física del botón con rebote
+    output reg btn_out  // Salida limpia y filtrada
+);
+
+    reg [19:0] contador = 0;
+    reg btn_prev = 0;
+    
+    always @(posedge clk) begin
+        if (btn_in != btn_prev) begin
+            btn_prev <= btn_in;
+            contador <= 0;
+        end else if (contador < 20'd1048575) begin
+            contador <= contador + 1;
+        end else begin
+            btn_out <= btn_prev;
+        end
+    end
+endmodule
+```
+
+**FSM**
+
+Dificultad Progresiva: 
+Por cada acierto, esta ventana se reduce en 100 ms utilizando clock enables (sin generar relojes derivados), hasta llegar a un límite mínimo de 500 ms. Esta dificultad se mantiene incluso si el jugador falla, solo se reinicia si se pierde la partida.
+
+Gestión de Vidas y Reinicio: Un acierto reinicia el contador de fallos consecutivos a cero. Al alcanzar 3 fallos consecutivos, la FSM transiciona a un estado de Game Over durante al menos 2 segundos, indicándolo con un LED de estado, antes de reiniciar el juego automáticamente.
+
 ## Circuito discreto
 Este sistema se encarga de seleccionas psudoaleatoriamente un led y lo enciende, funciona usando un registro de desplazamiento con retroalimentación lineal para generar un numero de tres bits cada vez que la fpga lo indique, este funciona con 3 flip flops en serie donde la entrada del primero es la salida de una compuerta xor cuyas entradas son las salidas de los otros flip flops, cada vez que la fpga envia la señal esta llega a la entrada de reloj para que los bits de salida que dan los fliop flops se desplazan generando asi un numero de tres bits. Una vez genrado el numero de tres bits, este pasa por el decodificador 74LS138 el cual dependiendo del numero binario generado anteriormente enciende una de las 8 posibles entradas, estas entradas se conectan a los 8 leds. Por ultimo mediante un 74LS165 se empaqueta una secuencia de 8 bits que se envian a la fpga para indicarle cual posicion actual tiene al led encendido.
 <img width="636" height="559" alt="Captura de pantalla 2026-08-12 113503" src="https://github.com/user-attachments/assets/40c7f6c1-4d64-4c0e-9d0e-f3c6ea0d0a36" />
