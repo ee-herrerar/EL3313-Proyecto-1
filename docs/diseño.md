@@ -96,7 +96,7 @@ UART (Universal Asynchronous Receiver Transmitter) es un protocolo de comunicaci
 
 El siguiente circuito está compuesto por una señal de reloj generada con un oscilador astable con 555 y un divisor de frecuencia hecho con flip-flops tipo D, estos dos elementos se utilizarán para generar el baud rate al que se transmiten los datos. El registro de desplazamiento paralelo serie 74LS165 se encarga de la transmisión de los 8 bits en serie desde el decodificador a través de la línea de transmisión TX. La parte de control de secuencia se encarga de contar los bits desplazados en cada señal del generador de baudios así como de generar y controlar las señales de “Load” en el registro de desplazamientos, el control se hace a través de un MUX 2 a 1, el cual decide entre las entradas según el numero en el que el contador en que se encuentre, se planea que la primera entrada se mantenga en alto y a partir de cierto numero pase a cero (tras ser activado el contador), activando así las señales de “start (0)” y “stop (1)”, las cuales se encargan de indicar al receptor el inicio y fin de la transmisión asincrónica. La segunda entrada se conecta al registro de desplazamiento y se activa después de el “start (0)” de la primera entrada para iniciar la transmisión en serie de los bits, finalmente se regresa a la primera entrada manteniéndola en 1 o “stop”.
 
-![Diagrama UART de transmision](./ImagenesDocu/UART-Modulo_de_transmision.png)
+![Diagrama UART de transmision](./ImagenesDocu/UART-ModuloDeTransmision.png)
 
 
 #### MUX
@@ -106,13 +106,13 @@ El siguiente circuito está compuesto por una señal de reloj generada con un os
 
 Para esta sección se considera el uso de un contador de 4 bits de 0 a 9. Por medio de lógica combinacional se planea el control de las salidas de MUX, el estado de la línea A (señal de “start” y “stop”) y el control del load para cargar los bits e iniciar el desplazamiento.
 
-![ejemplo Mux](./ImagenesDocu/Tabla_simplificada_del_MUX.png)
+![ejemplo Mux](./ImagenesDocu/TablaSimplificadaDelMUX.png)
 
-![ejemplo Mux](./ImagenesDocu/Tabla_contador-MUX.png)
+![ejemplo Mux](./ImagenesDocu/TablaContador-MUX.png)
 
 Los números del contador se usarán para la carga paralela de bits en el registro de desplazamiento e iniciar el desplazamiento, cambiar la línea A entre 1 y 0, elegir entre salidas del MUX y activar una señal de enable una vez finaliza la transmisión, deteniendo la cuenta. Para este primer planteamiento se toma en cuenta la posibilidad de generar una señal que desactiva el enable una vez inicia la transmisión y los bits para su transmisión. 
 
-![ejemplo Mux](./ImagenesDocu/Tabla_contador-load-TX.png)
+![ejemplo Mux](./ImagenesDocu/TablaContador-load-TX.png)
 
 ### Fuentes
 [1] 	TI Precision Labs – Microcontrollers “UART Protocol Overview”, sf. [online]: 
