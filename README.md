@@ -54,15 +54,19 @@ endmodule
 Dificultad Progresiva: 
 Por cada acierto, esta ventana se reduce en 100 ms utilizando clock enables (sin generar relojes derivados), hasta llegar a un límite mínimo de 500 ms. Esta dificultad se mantiene incluso si el jugador falla, solo se reinicia si se pierde la partida.
 
- Gestión de Vidas y Reinicio: Un acierto reinicia el contador de fallos consecutivos a cero. Al alcanzar 3 fallos consecutivos, la FSM transiciona a un estado de Game Over durante al menos 2 segundos, indicándolo con un LED de estado, antes de reiniciar el juego automáticamente.
+Gestión de Vidas y Reinicio: Un acierto reinicia el contador de fallos consecutivos a cero. Al alcanzar 3 fallos consecutivos, la FSM transiciona a un estado de Game Over durante al menos 2 segundos, indicándolo con un LED de estado, antes de reiniciar el juego automáticamente.
 
 #### **Diagramas generales**
+
+* **Lógica de botones**:
+
+![Diagrama Botón](figuras/Diagrama-Boton.png)
+
+
+* **UART**
+
 ![Diagrama UART](figuras/Diagrama-UART.png)
 
-* **Lógica de botones**: 
-
-* **Etapa discreta**
-    * 
 
 * **Lógica sistema de Topos**: Para la lógica de esta se planteó una FSM tal como puede verse a continuación.
 
