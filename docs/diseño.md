@@ -3,7 +3,7 @@
 ### Descripción General
 El subsistema de control es implementado en la FPGA y es el encargado de manejar la lógica general del juego. Este recibe distintas señales de entrada, como la señal del botón de RESET, la información de la posición del Topo proveniente del circuito discreto mediante UART, las señales correspondientes a los botones de los topos y el reloj global de 100 MHz. A partir de estas entradas, el subsistema se encarga de controlar el funcionamiento del juego, incluyendo la secuencia de estados, la temporización, el conteo de aciertos y fallos, la dificultad y la visualización de los resultados.
 ### Diagrama de Bloques
-![Diagrama de bloques](./DiagramaBloques.png)
+![Diagrama de bloques](./ImagenesDocu/DiagramaBloques.png)
 ### Maquina de Estados
 ![[FSM(Topos).png]]
 
