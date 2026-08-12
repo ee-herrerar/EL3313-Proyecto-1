@@ -5,7 +5,7 @@ El subsistema de control es implementado en la FPGA y es el encargado de manejar
 ### Diagrama de Bloques
 ![Diagrama de bloques](./ImagenesDocu/DiagramaBloques.png)
 ### Maquina de Estados
-![[FSM(Topos).png]]
+![Máquina de estados](./ImagenesDocu/FSM(Topos).png)
 
 
 |  Estado Actual   |                                 Condición de Salto                                  |                                       Acción a realizar                                       |   Salto a Realizar   |
@@ -28,7 +28,7 @@ El subsistema de control es implementado en la FPGA y es el encargado de manejar
 ### Comunicación UART
 Para la comunicación mediante UART RX se tendrá en cuenta que la información proveniente del circuito discreto utiliza un formato 8N1, constituido por un bit de inicio, ocho bits de datos y un bit de parada. De los ocho bits de datos recibidos, únicamente los tres bits menos significativos serán utilizados para representar la posición del Topo, permitiendo codificar las ocho posiciones posibles. Los cinco bits restantes se mantendrán en cero o podrán ser utilizados para otra función que se decida.
 Debido a que el circuito discreto y la FPGA operan con referencias de reloj independientes, la señal serial recibida deberá pasar por un sincronizador de dos etapas antes de ser procesada por el receptor UART. Una vez recibida correctamente la trama, el receptor UART generará una señal de dato válido que indicará a la FSM que la posición recibida puede ser utilizada y que se puede continuar con la ejecución del juego. En cuanto al _baud rate_, este se tendrá que ajustar de acuerdo con las necesidades del circuito discreto, por lo que se definirá en una etapa más avanzada.
-![[DiagramaUART.png]]
+![Diagrama UART](./ImagenesDocu/DiagramaUART.png)
 
 
 ### Botones de los Topos
@@ -36,7 +36,7 @@ El procesamiento de los botones correspondientes a los “huecos” requiere pri
 1. Sincronización de la señal: De manera similar a la señal recibida mediante UART, las señales provenientes de los botones son asíncronas respecto al reloj de la FPGA. Por esta razón, cada una pasará por un sincronizador de dos etapas antes de ser procesada.
 2. Debounce: Debido al rebote mecánico producido al presionar los botones, pueden generarse múltiples cambios rápidos de estado durante una sola pulsación. Para evitar que estos sean interpretados como múltiples golpes, se utilizará un módulo de _debounce_ que permitirá obtener una señal estable.
 Una vez realizados ambos procesos, las señales filtradas de los ocho botones podrán ser utilizadas por la FSM para determinar si la posición presionada corresponde con la posición del Topo activo.
-![[DiagramaBoton.png]]
+![Diagrama de Botones](./ImagenesDocu/DiagramaBoton.png)
 
 
 ### Temporizador y Clock Enables
@@ -66,7 +66,7 @@ Se utilizará un clock enable para controlar cuándo el contador del temporizado
 Para esta sección simplemente se requiere el designar cada uno de los estados del juego:
 - Game Over: Se alcanza cuando el jugador acumula tres fallos consecutivos. El sistema permanece en este estado durante al menos 2 segundos, indicando mediante el LED de estado que la partida ha terminado. Una vez transcurrido este tiempo, se reinician los valores correspondientes a la partida y la FSM vuelve a "Llamada Topo".
 - RESET: Corresponde a una condición global activada mediante el botón físico central de la tarjeta. Puede ejecutarse desde cualquier estado y provoca el reinicio inmediato de los valores asociados a la partida, llevando nuevamente la FSM a "Llamada Topo".
-![[DiagramaGOR.png]]
+![Diagrama de Game Over y Reset](./ImagenesDocu/DiagramaGOR.png)
 
 ### Plan de Pruebas
 El plan de pruebas simplemente demostrara el correcto funcionamiento tanto de cada parte individual del sistema como el sistema completo. Para esto se esperara que cada parte designada en el siguiente cuadro realize la función indicada al lado, de ser así, se considera que esa parte funciona correctamente. 
