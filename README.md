@@ -17,6 +17,8 @@ UART (Universal Asynchronous Receiver Transmitter) es un protocolo de comunicaci
 
 El siguiente circuito está compuesto por una señal de reloj generada con un oscilador astable con 555 y un divisor de frecuencia hecho con flip-flops tipo D, estos dos elementos se utilizarán para generar el baud rate al que se transmiten los datos. El registro de desplazamiento paralelo serie 74LS165 se encarga de la transmisión de los 8 bits en serie desde el decodificador a través de la línea de transmisión TX. La parte de control de secuencia se encarga de contar los bits desplazados en cada señal del generador de baudios así como de generar y controlar las señales de “Load” en el registro de desplazamientos, el control se hace a través de un MUX 2 a 1, el cual decide entre las entradas según el numero en el que el contador en que se encuentre, se planea que la primera entrada se mantenga en alto y a partir de cierto numero pase a cero (tras ser activado el contador), activando así las señales de “start (0)” y “stop (1)”, las cuales se encargan de indicar al receptor el inicio y fin de la transmisión asincrónica. La segunda entrada se conecta al registro de desplazamiento y se activa después de el “start (0)” de la primera entrada para iniciar la transmisión en serie de los bits, finalmente se regresa a la primera entrada manteniéndola en 1 o “stop”.
 
+<img width="521" height="369" alt="image" src="https://github.com/user-attachments/assets/1ce47d52-6a80-4c61-aea8-3cd64cee79c8" />
+
 
 ##### MUX
 
@@ -32,3 +34,10 @@ Los números del contador se usarán para la carga paralela de bits en el regist
 
 <img width="539" height="331" alt="image" src="https://github.com/user-attachments/assets/d13b8462-2430-43b8-b05a-6e66f45518aa" />
 
+### Fuentes
+[1] 	TI Precision Labs – Microcontrollers “UART Protocol Overview”, sf. [online]: 
+      https://www.ti.com/content/dam/videos/external-videos/zh-tw/9/3816841626001/6313217959112.mp4/subassets/uart_protocol_overview_and_error_sources_0.pdf
+
+[2] 	R. Xie, "Design and Simulation of UART Protocol Based on FPGA," 2024 6th International Conference on Applied Machine Learning (ICAML), Dalian, China, 2024,        pp. 551-557, doi: 10.1109/ICAML64299.2024.00103.
+
+[3] 	W. Huang and G. Sheng, "Analysis and Research on UART Communication Protocol," 2024 4th Asia-Pacific Conference on Communications Technology and Computer          Science (ACCTCS), Shenyang, China, 2024, pp. 768-771, doi: 10.1109/ACCTCS61748.2024.00140. 
