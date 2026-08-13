@@ -1,9 +1,5 @@
 # EL3313: Taller de Diseño Digital
-## Proyecto 2:  Whack-a-mole vía FPGA y lógica discreta
-
-### Introducción
-Este proyecto consiste en el diseño e implementación de una versión híbrida del clásico juego electrónico **Whack-a-mole** ("golpea al topo"). El objetivo principal es integrar de forma práctica los conocimientos de sistemas combinacionales, secuenciales, *datapath* y *control path*. Para ello, el sistema propuesto divide sus tareas entre un subsistema de **lógica discreta** (implementado en *protoboard* con circuitos integrados de la familia 74xx) y un subsistema de control digital sintetizado en una **FPGA** mediante el lenguaje de descripción de hardware SystemVerilog.
-El juego se desarrolla mediante la interacción de ambos entornos: el circuito discreto determina de manera pseudoaleatoria cuál de las ocho posiciones posibles ocupará el "topo", lo muestra localmente mediante un LED y envía esta información a la FPGA a través de un enlace de comunicación serial asíncrono UART. Por su parte, la FPGA gestiona toda la lógica de control del juego, lo que incluye la habilitación del turno, el control de la dificultad progresiva reduciendo la ventana de tiempo mediante *clock enables*, el registro de vidas (con un límite de 3 fallos consecutivos), la lectura de los pulsadores externos de golpe conectados por GPIO y la visualización de los puntajes en displays de siete segmentos. Este enfoque híbrido permite experimentar tanto el diseño síncrono en HDL como los retos físicos de comunicar de forma confiable dos dominios de reloj independientes que carecen de una referencia de tiempo compartida.
+## Proyecto 1:  Whack-a-mole vía FPGA y lógica discreta
 
 ### Etapa Actual (WIP)
 En este momento, el repositorio se encuentra con acceso al **Avance 1** del curso "Taller de Sistemas Digitales", por lo que en Docs tendrá acceso al Markdown (MD) con información vinculada a este. Sin código implementado de momento.
