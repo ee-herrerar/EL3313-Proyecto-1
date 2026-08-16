@@ -1,0 +1,68 @@
+# ==========================================
+# SystemVerilog / FPGA / ASIC Build Files
+# ==========================================
+
+# Simulation outputs & databases
+*.dump
+*.vcd
+*.fst
+*.wdb
+*.shm/
+*.dsn
+*.trn
+
+# Compiled libraries and work directories
+work/
+xilinx_sim/
+msim/
+*.mti
+*.pak
+
+# ModelSim / QuestaSim
+transcript
+*.wlf
+modelsim.ini
+*_vlog.log
+
+# Vivado (Xilinx)
+*.log
+*.jou
+*.pb
+*.str
+.Xil/
+*_utilization_placed.rpt
+
+# Quartus (Intel / Altera)
+db/
+incremental_db/
+*.qws
+*.rpt
+*.summary
+*.sof
+*.pof
+
+# Synopsys (VCS / Design Compiler)
+csrc/
+simv
+simv.daidir/
+*.key
+*.vpd
+vcdplus.vpd
+ucli.key
+DVEfiles/
+command.log
+
+# Cadence (Xcelium / NC-Sim)
+xcelium.d/
+INCA_libs/
+ncsim.log
+ncvlog.log
+ncelab.log
+
+# Verilator
+obj_dir/
+
+# General editor/OS files
+.DS_Store
+*.swp
+.vscode/
