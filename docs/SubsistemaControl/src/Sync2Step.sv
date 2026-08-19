@@ -1,4 +1,4 @@
-module two_stage_synchronizer (
+module Sync2Step (
     input  logic clk,
     input  logic reset,
     input  logic async_signal,
