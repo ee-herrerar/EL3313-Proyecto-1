@@ -3,24 +3,29 @@
 module TopControl_tb;
 
     // =====================================================
-    // Señales del Top
+    // Entradas
     // =====================================================
 
     logic       clk;
     logic       RESET;
-
     logic [7:0] BotonesRaw;
 
     logic       UARTValid;
     logic [2:0] TopoPosicion;
+
+
+    // =====================================================
+    // Salidas
+    // =====================================================
 
     logic       LlamadaTopoOut;
 
     logic       LED_Activo;
     logic       LED_GameOver;
 
-    logic [6:0] AciertosTotales;
-    logic [6:0] FallosTotales;
+    logic [6:0] seg;
+    logic [3:0] an;
+    logic       dp;
 
 
     // =====================================================
@@ -28,20 +33,22 @@ module TopControl_tb;
     // =====================================================
 
     TopControl DUT (
-        .clk              (clk),
-        .RESET            (RESET),
-        .BotonesRaw       (BotonesRaw),
+        .clk            (clk),
+        .RESET          (RESET),
 
-        .UARTValid        (UARTValid),
-        .TopoPosicion     (TopoPosicion),
+        .BotonesRaw     (BotonesRaw),
 
-        .LlamadaTopoOut   (LlamadaTopoOut),
+        .UARTValid      (UARTValid),
+        .TopoPosicion   (TopoPosicion),
 
-        .LED_Activo       (LED_Activo),
-        .LED_GameOver     (LED_GameOver),
+        .LlamadaTopoOut (LlamadaTopoOut),
 
-        .AciertosTotales  (AciertosTotales),
-        .FallosTotales    (FallosTotales)
+        .LED_Activo     (LED_Activo),
+        .LED_GameOver   (LED_GameOver),
+
+        .seg            (seg),
+        .an             (an),
+        .dp             (dp)
     );
 
 
@@ -56,10 +63,10 @@ module TopControl_tb;
 
 
     // =====================================================
-    // Enviar una posición como si viniera del UART
+    // Simular dato recibido desde UART
     // =====================================================
 
-    task automatic enviar_topo(
+    task automatic enviar_topo (
         input logic [2:0] posicion
     );
     begin
@@ -75,30 +82,33 @@ module TopControl_tb;
         UARTValid = 1'b0;
 
         if (LED_Activo == 1'b1)
-            $display("PASS: UART posicion %0d lleva a TopoActivo", posicion);
+            $display(
+                "PASS: UART posicion %0d lleva a TopoActivo",
+                posicion
+            );
         else
-            $error("ERROR: No se entro a TopoActivo");
+            $error(
+                "ERROR: Posicion %0d no llevo a TopoActivo",
+                posicion
+            );
 
     end
     endtask
 
 
     // =====================================================
-    // Presionar un botón físico
-    //
-    // La función espera automáticamente al:
-    // Sync2Step + debounce + Botones
+    // Presionar botón físico
     // =====================================================
 
-    task automatic presionar_boton(
+    task automatic presionar_boton (
         input integer numero
     );
     begin
 
         BotonesRaw[numero] = 1'b1;
 
-        // El debounce tarda aproximadamente 10.5 ms.
-        // Se coloca timeout de 15 ms por seguridad.
+
+        // Esperar sincronizador + debounce
         fork : ESPERA_BOTON
 
             begin
@@ -107,8 +117,10 @@ module TopControl_tb;
 
             begin
                 #15_000_000;
-                $fatal(1,
-                    "ERROR: Timeout esperando BotonValido para boton %0d",
+
+                $fatal(
+                    1,
+                    "ERROR: Timeout esperando boton %0d",
                     numero
                 );
             end
@@ -119,17 +131,24 @@ module TopControl_tb;
 
         #1;
 
+
         if (DUT.TopoJugador == numero)
-            $display("PASS: Boton %0d detectado correctamente", numero);
+            $display(
+                "PASS: Boton %0d detectado correctamente",
+                numero
+            );
         else
-            $error("ERROR: Boton %0d identificado incorrectamente", numero);
+            $error(
+                "ERROR: Boton %0d identificado incorrectamente",
+                numero
+            );
 
     end
     endtask
 
 
     // =====================================================
-    // Esperar una nueva solicitud de topo
+    // Esperar que la FSM solicite otro topo
     // =====================================================
 
     task automatic esperar_llamada_topo;
@@ -143,7 +162,10 @@ module TopControl_tb;
 
             begin
                 #1000;
-                $fatal(1, "ERROR: FSM no regreso a LlamadaTopo");
+                $fatal(
+                    1,
+                    "ERROR: FSM no regreso a LlamadaTopo"
+                );
             end
 
         join_any
@@ -157,13 +179,14 @@ module TopControl_tb;
 
 
     // =====================================================
-    // Programa de prueba
+    // Programa principal
     // =====================================================
 
     initial begin
 
         RESET        = 1'b1;
         BotonesRaw   = 8'b00000000;
+
         UARTValid    = 1'b0;
         TopoPosicion = 3'd0;
 
@@ -174,50 +197,71 @@ module TopControl_tb;
 
         #20;
 
-        if ((AciertosTotales == 7'd0) &&
-            (FallosTotales   == 7'd0) &&
-            (LED_GameOver    == 1'b0) &&
-            (LlamadaTopoOut  == 1'b1)) begin
 
+        if ((DUT.AciertosTotales == 7'd0) &&
+            (DUT.FallosTotales   == 7'd0) &&
+            (LED_GameOver        == 1'b0) &&
+            (LlamadaTopoOut      == 1'b1))
+        begin
             $display("PASS: RESET inicial correcto");
-
         end
+
         else begin
             $error("ERROR: RESET inicial incorrecto");
         end
+
+
+        if (dp == 1'b1)
+            $display("PASS: Punto decimal apagado");
+        else
+            $error("ERROR: Punto decimal incorrecto");
 
 
         RESET = 1'b0;
 
 
         // =================================================
-        // Esperar inicialización de los debouncers
+        // Esperar estabilización de botones
         // =================================================
 
         fork : ESPERA_DEBOUNCE
 
             begin
-                wait (DUT.BotonesDebounced === 8'b00000000);
+                wait (
+                    DUT.BotonesDebounced ===
+                    8'b00000000
+                );
             end
 
             begin
                 #15_000_000;
-                $fatal(1, "ERROR: Los debouncers no se estabilizaron");
+
+                $fatal(
+                    1,
+                    "ERROR: Debouncers no se estabilizaron"
+                );
             end
 
         join_any
 
         disable ESPERA_DEBOUNCE;
 
-        $display("PASS: Sistema de botones estabilizado");
+
+        $display(
+            "PASS: Sistema de botones estabilizado"
+        );
+
+
+        // La FSM pasa LlamadaTopo -> EsperaTopo
+        @(posedge clk);
+        #1;
 
 
         // =================================================
-        // PRUEBA 2: PRIMER TOPO
+        // PRUEBA 2: ACIERTO
         //
-        // Posición del topo = 3
-        // Pulsamos botón 3
-        // Debe ser ACIERTO
+        // Topo = 3
+        // Botón = 3
         // =================================================
 
         enviar_topo(3'd3);
@@ -227,40 +271,92 @@ module TopControl_tb;
         esperar_llamada_topo();
 
 
-        if (AciertosTotales == 7'd1)
-            $display("PASS: Primer acierto contabilizado");
+        if (DUT.AciertosTotales == 7'd1)
+            $display(
+                "PASS: Primer acierto contabilizado"
+            );
         else
-            $error("ERROR: Acierto no contabilizado");
+            $error(
+                "ERROR: Primer acierto no contabilizado"
+            );
 
 
-        if (FallosTotales == 7'd0)
-            $display("PASS: No se genero fallo durante el acierto");
+        if (DUT.FallosTotales == 7'd0)
+            $display(
+                "PASS: No se genero fallo durante el acierto"
+            );
         else
-            $error("ERROR: Fallo inesperado");
+            $error(
+                "ERROR: Fallo inesperado"
+            );
 
 
-        // Dificultad debe subir después del acierto
+        // =================================================
+        // PRUEBA 3: DIFICULTAD
+        // =================================================
+
         if ((DUT.NivelDificultad == 4'd1) &&
-            (DUT.TiempoLimite == 11'd1400)) begin
+            (DUT.TiempoLimite    == 11'd1400))
+        begin
 
-            $display("PASS: Dificultad aumenta a nivel 1 / 1400 ms");
+            $display(
+                "PASS: Dificultad aumenta a nivel 1 / 1400 ms"
+            );
 
         end
+
         else begin
-            $error("ERROR: Dificultad no aumento correctamente");
+
+            $error(
+                "ERROR: Dificultad incorrecta"
+            );
+
         end
 
 
-        // La FSM pasa de LlamadaTopo a EsperaTopo
+        // =================================================
+        // PRUEBA 4: DISPLAY MUESTRA ACIERTO = 01
+        //
+        // AN2 = unidades de aciertos
+        // Debe mostrar 1
+        // =================================================
+
+        wait (
+            DUT.display_inst.SelectorDisplay == 2'b10
+        );
+
+        #1;
+
+
+        if ((an  == 4'b1011) &&
+            (seg == 7'b1001111))
+        begin
+
+            $display(
+                "PASS: Display recibe Aciertos = 01"
+            );
+
+        end
+
+        else begin
+
+            $error(
+                "ERROR: Display de aciertos incorrecto"
+            );
+
+        end
+
+
+        // Avanzar LlamadaTopo -> EsperaTopo
         @(posedge clk);
         #1;
 
 
         // =================================================
-        // PRUEBA 3: PRIMER FALLO
+        // PRUEBA 5: PRIMER FALLO
         //
         // Topo = 2
-        // Jugador pulsa 4
+        // Botón = 4
         // =================================================
 
         enviar_topo(3'd2);
@@ -270,26 +366,75 @@ module TopControl_tb;
         esperar_llamada_topo();
 
 
-        if ((FallosTotales == 7'd1) &&
-            (DUT.FallosConsecutivos == 2'd1)) begin
+        if ((DUT.FallosTotales == 7'd1) &&
+            (DUT.FallosConsecutivos == 2'd1))
+        begin
 
-            $display("PASS: Primer fallo contabilizado");
+            $display(
+                "PASS: Primer fallo contabilizado"
+            );
 
         end
+
         else begin
-            $error("ERROR: Primer fallo incorrecto");
+
+            $error(
+                "ERROR: Primer fallo incorrecto"
+            );
+
         end
 
 
-        // Un fallo NO debe cambiar la dificultad
+        // El fallo no cambia dificultad
+
         if ((DUT.NivelDificultad == 4'd1) &&
-            (DUT.TiempoLimite == 11'd1400)) begin
+            (DUT.TiempoLimite    == 11'd1400))
+        begin
 
-            $display("PASS: Fallo no modifica dificultad");
+            $display(
+                "PASS: Fallo no modifica dificultad"
+            );
 
         end
+
         else begin
-            $error("ERROR: Fallo modifico la dificultad");
+
+            $error(
+                "ERROR: Fallo modifico dificultad"
+            );
+
+        end
+
+
+        // =================================================
+        // PRUEBA 6: DISPLAY MUESTRA FALLO = 01
+        //
+        // AN0 = unidades de fallos
+        // =================================================
+
+        wait (
+            DUT.display_inst.SelectorDisplay == 2'b00
+        );
+
+        #1;
+
+
+        if ((an  == 4'b1110) &&
+            (seg == 7'b1001111))
+        begin
+
+            $display(
+                "PASS: Display recibe Fallos = 01"
+            );
+
+        end
+
+        else begin
+
+            $error(
+                "ERROR: Display de fallos incorrecto"
+            );
+
         end
 
 
@@ -298,10 +443,10 @@ module TopControl_tb;
 
 
         // =================================================
-        // PRUEBA 4: SEGUNDO FALLO CONSECUTIVO
+        // PRUEBA 7: SEGUNDO FALLO
         //
         // Topo = 5
-        // Jugador pulsa 6
+        // Botón = 6
         // =================================================
 
         enviar_topo(3'd5);
@@ -311,14 +456,22 @@ module TopControl_tb;
         esperar_llamada_topo();
 
 
-        if ((FallosTotales == 7'd2) &&
-            (DUT.FallosConsecutivos == 2'd2)) begin
+        if ((DUT.FallosTotales == 7'd2) &&
+            (DUT.FallosConsecutivos == 2'd2))
+        begin
 
-            $display("PASS: Segundo fallo consecutivo correcto");
+            $display(
+                "PASS: Segundo fallo consecutivo correcto"
+            );
 
         end
+
         else begin
-            $error("ERROR: Segundo fallo consecutivo incorrecto");
+
+            $error(
+                "ERROR: Segundo fallo incorrecto"
+            );
+
         end
 
 
@@ -327,9 +480,10 @@ module TopControl_tb;
 
 
         // =================================================
-        // PRUEBA 5: TERCER FALLO
+        // PRUEBA 8: TERCER FALLO -> GAME OVER
         //
-        // Debe entrar a GameOver
+        // Topo = 1
+        // Botón = 7
         // =================================================
 
         enviar_topo(3'd1);
@@ -337,7 +491,6 @@ module TopControl_tb;
         presionar_boton(7);
 
 
-        // Esperar entrada a GameOver
         fork : ESPERA_GAMEOVER
 
             begin
@@ -346,7 +499,11 @@ module TopControl_tb;
 
             begin
                 #1000;
-                $fatal(1, "ERROR: No se entro a GameOver");
+
+                $fatal(
+                    1,
+                    "ERROR: No se entro a GameOver"
+                );
             end
 
         join_any
@@ -356,31 +513,47 @@ module TopControl_tb;
         #1;
 
 
-        if ((FallosTotales == 7'd3) &&
-            (DUT.FallosConsecutivos == 2'd3)) begin
+        if ((DUT.FallosTotales == 7'd3) &&
+            (DUT.FallosConsecutivos == 2'd3))
+        begin
 
-            $display("PASS: Tercer fallo contabilizado");
+            $display(
+                "PASS: Tercer fallo contabilizado"
+            );
 
         end
+
         else begin
-            $error("ERROR: Tercer fallo incorrecto");
+
+            $error(
+                "ERROR: Tercer fallo incorrecto"
+            );
+
         end
 
 
         if (LED_GameOver == 1'b1)
-            $display("PASS: Tres fallos consecutivos llevan a GameOver");
+            $display(
+                "PASS: Tres fallos consecutivos llevan a GameOver"
+            );
         else
-            $error("ERROR: GameOver no se activo");
+            $error(
+                "ERROR: GameOver no se activo"
+            );
 
 
         if (LED_Activo == 1'b0)
-            $display("PASS: Topo deja de estar activo durante GameOver");
+            $display(
+                "PASS: Topo inactivo durante GameOver"
+            );
         else
-            $error("ERROR: Topo sigue activo durante GameOver");
+            $error(
+                "ERROR: Topo sigue activo durante GameOver"
+            );
 
 
         // =================================================
-        // PRUEBA 6: RESET DURANTE GAME OVER
+        // PRUEBA 9: RESET DURANTE GAME OVER
         // =================================================
 
         RESET = 1'b1;
@@ -388,36 +561,60 @@ module TopControl_tb;
         #2;
 
 
-        if ((AciertosTotales == 7'd0) &&
-            (FallosTotales   == 7'd0)) begin
+        if ((DUT.AciertosTotales == 7'd0) &&
+            (DUT.FallosTotales   == 7'd0))
+        begin
 
-            $display("PASS: RESET limpia contadores");
+            $display(
+                "PASS: RESET limpia contadores"
+            );
 
         end
+
         else begin
-            $error("ERROR: RESET no limpio contadores");
+
+            $error(
+                "ERROR: RESET no limpio contadores"
+            );
+
         end
 
 
         if ((DUT.NivelDificultad == 4'd0) &&
-            (DUT.TiempoLimite == 11'd1500)) begin
+            (DUT.TiempoLimite    == 11'd1500))
+        begin
 
-            $display("PASS: RESET restaura dificultad inicial");
+            $display(
+                "PASS: RESET restaura dificultad inicial"
+            );
 
         end
+
         else begin
-            $error("ERROR: RESET no restauro dificultad");
-        end
 
-
-        if ((LED_GameOver == 1'b0) &&
-            (LlamadaTopoOut == 1'b1)) begin
-
-            $display("PASS: RESET sale de GameOver y solicita nuevo topo");
+            $error(
+                "ERROR: RESET no restauro dificultad"
+            );
 
         end
+
+
+        if ((LED_GameOver   == 1'b0) &&
+            (LlamadaTopoOut == 1'b1))
+        begin
+
+            $display(
+                "PASS: RESET sale de GameOver y solicita nuevo topo"
+            );
+
+        end
+
         else begin
-            $error("ERROR: Estado despues de RESET incorrecto");
+
+            $error(
+                "ERROR: Estado posterior a RESET incorrecto"
+            );
+
         end
 
 

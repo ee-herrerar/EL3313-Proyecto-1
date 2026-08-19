@@ -2,29 +2,29 @@ module TopControl (
     input  logic       clk,
     input  logic       RESET,
 
-    // 8 botones físicos
+    // Botones físicos
     input  logic [7:0] BotonesRaw,
 
-    // Entradas temporales
-    // Más adelante vendrán del UART_RX
+    // Señales provenientes del módulo UART externo
     input  logic       UARTValid,
     input  logic [2:0] TopoPosicion,
 
-    // Solicitud de una nueva posición del topo
+    // Solicitud hacia la lógica discreta
     output logic       LlamadaTopoOut,
 
     // LEDs de estado
     output logic       LED_Activo,
     output logic       LED_GameOver,
 
-    // Contadores
-    output logic [6:0] AciertosTotales,
-    output logic [6:0] FallosTotales
+    // Display de 7 segmentos
+    output logic [6:0] seg,
+    output logic [3:0] an,
+    output logic       dp
 );
 
 
     // =====================================================
-    // Señales internas
+    // Señales internas - Botones
     // =====================================================
 
     logic [7:0] BotonesSync;
@@ -33,34 +33,51 @@ module TopControl (
     logic       BotonValido;
     logic [2:0] TopoJugador;
 
-    logic       TopoActivoOut;
 
-    logic       AciertosSube;
-    logic       FallosSube;
+    // =====================================================
+    // Señales internas - FSM
+    // =====================================================
 
-    logic       ReiniciarFallosConsecutivos;
-    logic       ReajusteRelojOut;
+    logic TopoActivoOut;
 
-    logic       GameOverOut;
-    logic       GameOverDone;
-    logic       ReiniciarJuego;
+    logic AciertosSube;
+    logic FallosSube;
 
+    logic ReiniciarFallosConsecutivos;
+    logic ReajusteRelojOut;
+
+    logic GameOverOut;
+    logic GameOverDone;
+    logic ReiniciarJuego;
+
+    logic TiempoFuera;
+
+
+    // =====================================================
+    // Señales internas - Contadores
+    // =====================================================
+
+    logic [6:0] AciertosTotales;
+    logic [6:0] FallosTotales;
     logic [1:0] FallosConsecutivos;
+
+
+    // =====================================================
+    // Señales internas - Dificultad
+    // =====================================================
 
     logic [3:0]  NivelDificultad;
     logic [10:0] TiempoLimite;
 
-    logic       TiempoFuera;
-
 
     // =====================================================
-    // Sincronización de los 8 botones
+    // Sincronización + Debounce de los 8 botones
     // =====================================================
 
     genvar i;
 
     generate
-        for (i = 0; i < 8; i = i + 1) begin : GEN_SYNC
+        for (i = 0; i < 8; i = i + 1) begin : GEN_BOTONES
 
             Sync2Step sync_inst (
                 .clk          (clk),
@@ -69,16 +86,6 @@ module TopControl (
                 .sync_signal  (BotonesSync[i])
             );
 
-        end
-    endgenerate
-
-
-    // =====================================================
-    // Debounce de los 8 botones
-    // =====================================================
-
-    generate
-        for (i = 0; i < 8; i = i + 1) begin : GEN_DEBOUNCE
 
             debounce debounce_inst (
                 .clk     (clk),
@@ -91,7 +98,7 @@ module TopControl (
 
 
     // =====================================================
-    // Procesamiento de botones
+    // Identificación del botón
     // =====================================================
 
     Botones botones_inst (
@@ -160,7 +167,7 @@ module TopControl (
 
 
     // =====================================================
-    // Control de dificultad
+    // Dificultad
     // =====================================================
 
     Dificultad dificultad_inst (
@@ -191,7 +198,7 @@ module TopControl (
 
 
     // =====================================================
-    // Pantalla / temporizador de Game Over
+    // Temporizador de Game Over
     // =====================================================
 
     GameOverScreen gameover_inst (
@@ -201,6 +208,23 @@ module TopControl (
         .GameOverOut   (GameOverOut),
 
         .GameOverDone  (GameOverDone)
+    );
+
+
+    // =====================================================
+    // Displays de 7 segmentos
+    // =====================================================
+
+    Display7Seg display_inst (
+        .clk              (clk),
+        .RESET            (RESET),
+
+        .AciertosTotales  (AciertosTotales),
+        .FallosTotales    (FallosTotales),
+
+        .seg              (seg),
+        .an               (an),
+        .dp               (dp)
     );
 
 
