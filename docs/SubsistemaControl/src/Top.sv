@@ -52,6 +52,9 @@ module TopControl (
 
     logic TiempoFuera;
 
+    // Pulso original de la FSM
+    logic LlamadaTopoFSM;
+
 
     // =====================================================
     // Señales internas - Contadores
@@ -102,12 +105,12 @@ module TopControl (
     // =====================================================
 
     Botones botones_inst (
-        .clk               (clk),
-        .RESET             (RESET),
-        .BotonesDebounced  (BotonesDebounced),
+        .clk              (clk),
+        .RESET            (RESET),
+        .BotonesDebounced (BotonesDebounced),
 
-        .BotonValido       (BotonValido),
-        .TopoJugador       (TopoJugador)
+        .BotonValido      (BotonValido),
+        .TopoJugador      (TopoJugador)
     );
 
 
@@ -116,33 +119,50 @@ module TopControl (
     // =====================================================
 
     GameFSM fsm_inst (
-        .clk                           (clk),
-        .RESET                         (RESET),
+        .clk                         (clk),
+        .RESET                       (RESET),
 
-        .UARTValid                     (UARTValid),
-        .TopoPosicion                  (TopoPosicion),
+        .UARTValid                   (UARTValid),
+        .TopoPosicion                (TopoPosicion),
 
-        .TopoJugador                   (TopoJugador),
-        .BotonValido                   (BotonValido),
+        .TopoJugador                 (TopoJugador),
+        .BotonValido                 (BotonValido),
 
-        .TiempoFuera                   (TiempoFuera),
+        .TiempoFuera                 (TiempoFuera),
 
-        .FallosConsecutivos            (FallosConsecutivos),
+        .FallosConsecutivos          (FallosConsecutivos),
 
-        .GameOverDone                  (GameOverDone),
+        .GameOverDone                (GameOverDone),
 
-        .LlamadaTopoOut                (LlamadaTopoOut),
-        .TopoActivoOut                 (TopoActivoOut),
+        // Ahora sale primero a una señal interna
+        .LlamadaTopoOut              (LlamadaTopoFSM),
 
-        .AciertosSube                  (AciertosSube),
-        .FallosSube                    (FallosSube),
+        .TopoActivoOut               (TopoActivoOut),
 
-        .ReiniciarFallosConsecutivos   (ReiniciarFallosConsecutivos),
+        .AciertosSube                (AciertosSube),
+        .FallosSube                  (FallosSube),
 
-        .ReajusteRelojOut              (ReajusteRelojOut),
+        .ReiniciarFallosConsecutivos (ReiniciarFallosConsecutivos),
 
-        .GameOverOut                   (GameOverOut),
-        .ReiniciarJuego                (ReiniciarJuego)
+        .ReajusteRelojOut            (ReajusteRelojOut),
+
+        .GameOverOut                 (GameOverOut),
+        .ReiniciarJuego              (ReiniciarJuego)
+    );
+
+
+    // =====================================================
+    // Extensor de LlamadaTopo
+    //
+    // Convierte el pulso de 1 ciclo de la FSM
+    // en un pulso de aproximadamente 1 ms
+    // =====================================================
+
+    ExtensorLlamadaTopo extensor_inst (
+        .clk            (clk),
+        .RESET          (RESET),
+        .LlamadaTopoIn  (LlamadaTopoFSM),
+        .LlamadaTopoOut (LlamadaTopoOut)
     );
 
 
@@ -151,18 +171,18 @@ module TopControl (
     // =====================================================
 
     contadores contadores_inst (
-        .clk                           (clk),
-        .RESET                         (RESET),
+        .clk                         (clk),
+        .RESET                       (RESET),
 
-        .AciertosSube                  (AciertosSube),
-        .FallosSube                    (FallosSube),
+        .AciertosSube                (AciertosSube),
+        .FallosSube                  (FallosSube),
 
-        .ReiniciarFallosConsecutivos   (ReiniciarFallosConsecutivos),
-        .ReiniciarJuego                (ReiniciarJuego),
+        .ReiniciarFallosConsecutivos (ReiniciarFallosConsecutivos),
+        .ReiniciarJuego              (ReiniciarJuego),
 
-        .AciertosTotales               (AciertosTotales),
-        .FallosTotales                 (FallosTotales),
-        .FallosConsecutivos            (FallosConsecutivos)
+        .AciertosTotales             (AciertosTotales),
+        .FallosTotales               (FallosTotales),
+        .FallosConsecutivos          (FallosConsecutivos)
     );
 
 
@@ -171,14 +191,14 @@ module TopControl (
     // =====================================================
 
     Dificultad dificultad_inst (
-        .clk               (clk),
-        .RESET             (RESET),
+        .clk              (clk),
+        .RESET            (RESET),
 
-        .ReajusteRelojOut  (ReajusteRelojOut),
-        .ReiniciarJuego    (ReiniciarJuego),
+        .ReajusteRelojOut (ReajusteRelojOut),
+        .ReiniciarJuego   (ReiniciarJuego),
 
-        .NivelDificultad   (NivelDificultad),
-        .TiempoLimite      (TiempoLimite)
+        .NivelDificultad  (NivelDificultad),
+        .TiempoLimite     (TiempoLimite)
     );
 
 
@@ -187,13 +207,13 @@ module TopControl (
     // =====================================================
 
     Temporizador temporizador_inst (
-        .clk            (clk),
-        .RESET          (RESET),
+        .clk           (clk),
+        .RESET         (RESET),
 
-        .TopoActivoOut  (TopoActivoOut),
-        .TiempoLimite   (TiempoLimite),
+        .TopoActivoOut (TopoActivoOut),
+        .TiempoLimite  (TiempoLimite),
 
-        .TiempoFuera    (TiempoFuera)
+        .TiempoFuera   (TiempoFuera)
     );
 
 
@@ -202,12 +222,12 @@ module TopControl (
     // =====================================================
 
     GameOverScreen gameover_inst (
-        .clk           (clk),
-        .RESET         (RESET),
+        .clk          (clk),
+        .RESET        (RESET),
 
-        .GameOverOut   (GameOverOut),
+        .GameOverOut  (GameOverOut),
 
-        .GameOverDone  (GameOverDone)
+        .GameOverDone (GameOverDone)
     );
 
 
@@ -216,15 +236,15 @@ module TopControl (
     // =====================================================
 
     Display7Seg display_inst (
-        .clk              (clk),
-        .RESET            (RESET),
+        .clk             (clk),
+        .RESET           (RESET),
 
-        .AciertosTotales  (AciertosTotales),
-        .FallosTotales    (FallosTotales),
+        .AciertosTotales (AciertosTotales),
+        .FallosTotales   (FallosTotales),
 
-        .seg              (seg),
-        .an               (an),
-        .dp               (dp)
+        .seg             (seg),
+        .an              (an),
+        .dp              (dp)
     );
 
 
