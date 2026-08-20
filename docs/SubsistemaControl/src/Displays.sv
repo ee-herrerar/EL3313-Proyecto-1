@@ -9,6 +9,9 @@ module Display7Seg (
     output logic       dp
 );
 
+    // =====================================================
+    // Señales internas
+    // =====================================================
 
     logic [16:0] ContadorRefresh;
     logic [1:0]  SelectorDisplay;
@@ -22,6 +25,10 @@ module Display7Seg (
     logic [3:0] DigitoActual;
 
 
+    // =====================================================
+    // Conversión a decenas y unidades
+    // =====================================================
+
     always_comb begin
 
         AciertosDecenas  = AciertosTotales / 10;
@@ -33,19 +40,30 @@ module Display7Seg (
     end
 
 
-    always_ff @(posedge clk or posedge RESET) begin
+    // =====================================================
+    // Contador de refresco
+    //
+    // Importante:
+    // NO se reinicia con RESET.
+    // Debe seguir corriendo para mantener activos los
+    // cuatro displays durante RESET.
+    // =====================================================
 
-        if (RESET)
-            ContadorRefresh <= 17'd0;
-        else
-            ContadorRefresh <= ContadorRefresh + 17'd1;
-
+    always_ff @(posedge clk) begin
+        ContadorRefresh <= ContadorRefresh + 17'd1;
     end
 
 
-    // Los dos bits superiores seleccionan el display
+    // Bits superiores usados para seleccionar display
     assign SelectorDisplay = ContadorRefresh[16:15];
 
+
+    // =====================================================
+    // Selección del display activo
+    //
+    // Basys 3:
+    // an = 0 -> display encendido
+    // =====================================================
 
     always_comb begin
 
@@ -54,14 +72,15 @@ module Display7Seg (
 
         case (SelectorDisplay)
 
-            // Display derecho:
-            // unidades de fallos
+            // AN0
+            // Unidades de fallos
             2'b00: begin
                 an           = 4'b1110;
                 DigitoActual = FallosUnidades;
             end
 
 
+            // AN1
             // Decenas de fallos
             2'b01: begin
                 an           = 4'b1101;
@@ -69,6 +88,7 @@ module Display7Seg (
             end
 
 
+            // AN2
             // Unidades de aciertos
             2'b10: begin
                 an           = 4'b1011;
@@ -76,8 +96,8 @@ module Display7Seg (
             end
 
 
-            // Display izquierdo:
-            // decenas de aciertos
+            // AN3
+            // Decenas de aciertos
             2'b11: begin
                 an           = 4'b0111;
                 DigitoActual = AciertosDecenas;
@@ -95,10 +115,10 @@ module Display7Seg (
 
 
     // =====================================================
-    // Decoder BCD → 7 segmentos
+    // Decoder BCD -> 7 segmentos
     //
-    // seg = {a,b,c,d,e,f,g}
-    // En Basys 3 los segmentos son activos en bajo
+    // seg[6:0] = {a,b,c,d,e,f,g}
+    // Segmentos activos en bajo
     // =====================================================
 
     always_comb begin
@@ -123,8 +143,9 @@ module Display7Seg (
     end
 
 
-    // Punto decimal siempre apagado
+    // Punto decimal apagado
     assign dp = 1'b1;
 
 
 endmodule
+//Version 2
