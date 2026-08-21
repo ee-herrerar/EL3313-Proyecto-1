@@ -53,7 +53,7 @@ module TopControl_tb;
 
 
     // =====================================================
-    // Reloj de 100 MHz
+    // Reloj 100 MHz
     // =====================================================
 
     initial begin
@@ -97,7 +97,7 @@ module TopControl_tb;
 
 
     // =====================================================
-    // Presionar botón físico
+    // Presionar botón
     // =====================================================
 
     task automatic presionar_boton (
@@ -107,8 +107,6 @@ module TopControl_tb;
 
         BotonesRaw[numero] = 1'b1;
 
-
-        // Esperar sincronizador + debounce
         fork : ESPERA_BOTON
 
             begin
@@ -131,7 +129,6 @@ module TopControl_tb;
 
         #1;
 
-
         if (DUT.TopoJugador == numero)
             $display(
                 "PASS: Boton %0d detectado correctamente",
@@ -148,11 +145,16 @@ module TopControl_tb;
 
 
     // =====================================================
-    // Esperar que la FSM solicite otro topo
+    // Esperar nueva solicitud de topo
     // =====================================================
 
     task automatic esperar_llamada_topo;
     begin
+
+        // Esperar primero a que esté baja para evitar
+        // confundirla con un pulso anterior
+        if (LlamadaTopoOut == 1'b1)
+            wait (LlamadaTopoOut == 1'b0);
 
         fork : ESPERA_LLAMADA
 
@@ -161,10 +163,11 @@ module TopControl_tb;
             end
 
             begin
-                #1000;
+                #2_000_000;
+
                 $fatal(
                     1,
-                    "ERROR: FSM no regreso a LlamadaTopo"
+                    "ERROR: No se genero nueva LlamadaTopoOut"
                 );
             end
 
@@ -197,18 +200,27 @@ module TopControl_tb;
 
         #20;
 
-
         if ((DUT.AciertosTotales == 7'd0) &&
             (DUT.FallosTotales   == 7'd0) &&
-            (LED_GameOver        == 1'b0) &&
-            (LlamadaTopoOut      == 1'b1))
+            (LED_GameOver        == 1'b0))
         begin
             $display("PASS: RESET inicial correcto");
         end
-
         else begin
             $error("ERROR: RESET inicial incorrecto");
         end
+
+
+        // El extensor mantiene la salida en 0 durante RESET
+
+        if (LlamadaTopoOut == 1'b0)
+            $display(
+                "PASS: LlamadaTopoOut permanece en 0 durante RESET"
+            );
+        else
+            $error(
+                "ERROR: LlamadaTopoOut activa durante RESET"
+            );
 
 
         if (dp == 1'b1)
@@ -217,7 +229,59 @@ module TopControl_tb;
             $error("ERROR: Punto decimal incorrecto");
 
 
+        // =================================================
+        // PRUEBA 2: EXTENSOR DE LLAMADATOPO
+        // =================================================
+
         RESET = 1'b0;
+
+
+        // Primer flanco después de RESET
+        @(posedge clk);
+        #1;
+
+
+        if (LlamadaTopoOut == 1'b1)
+            $display(
+                "PASS: LlamadaTopoOut se activa despues de RESET"
+            );
+        else
+            $error(
+                "ERROR: LlamadaTopoOut no se activo"
+            );
+
+
+        // Después de 99 999 ciclos adicionales todavía debe
+        // estar activa.
+
+        repeat (99999) @(posedge clk);
+        #1;
+
+
+        if (LlamadaTopoOut == 1'b1)
+            $display(
+                "PASS: LlamadaTopoOut permanece activa durante ~1 ms"
+            );
+        else
+            $error(
+                "ERROR: Pulso de LlamadaTopoOut demasiado corto"
+            );
+
+
+        // En el siguiente ciclo debe terminar
+
+        @(posedge clk);
+        #1;
+
+
+        if (LlamadaTopoOut == 1'b0)
+            $display(
+                "PASS: LlamadaTopoOut termina despues de ~1 ms"
+            );
+        else
+            $error(
+                "ERROR: LlamadaTopoOut no termino correctamente"
+            );
 
 
         // =================================================
@@ -252,13 +316,8 @@ module TopControl_tb;
         );
 
 
-        // La FSM pasa LlamadaTopo -> EsperaTopo
-        @(posedge clk);
-        #1;
-
-
         // =================================================
-        // PRUEBA 2: ACIERTO
+        // PRUEBA 3: ACIERTO
         //
         // Topo = 3
         // Botón = 3
@@ -287,12 +346,12 @@ module TopControl_tb;
             );
         else
             $error(
-                "ERROR: Fallo inesperado"
+                "ERROR: Fallo inesperado durante el acierto"
             );
 
 
         // =================================================
-        // PRUEBA 3: DIFICULTAD
+        // PRUEBA 4: DIFICULTAD
         // =================================================
 
         if ((DUT.NivelDificultad == 4'd1) &&
@@ -304,7 +363,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -315,10 +373,7 @@ module TopControl_tb;
 
 
         // =================================================
-        // PRUEBA 4: DISPLAY MUESTRA ACIERTO = 01
-        //
-        // AN2 = unidades de aciertos
-        // Debe mostrar 1
+        // PRUEBA 5: DISPLAY ACIERTOS = 01
         // =================================================
 
         wait (
@@ -337,7 +392,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -347,13 +401,14 @@ module TopControl_tb;
         end
 
 
-        // Avanzar LlamadaTopo -> EsperaTopo
-        @(posedge clk);
-        #1;
+        // Esperar que termine el pulso extendido antes
+        // de empezar el siguiente turno
+
+        wait (LlamadaTopoOut == 1'b0);
 
 
         // =================================================
-        // PRUEBA 5: PRIMER FALLO
+        // PRUEBA 6: PRIMER FALLO
         //
         // Topo = 2
         // Botón = 4
@@ -375,7 +430,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -385,7 +439,7 @@ module TopControl_tb;
         end
 
 
-        // El fallo no cambia dificultad
+        // Fallar no cambia dificultad
 
         if ((DUT.NivelDificultad == 4'd1) &&
             (DUT.TiempoLimite    == 11'd1400))
@@ -396,7 +450,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -407,9 +460,7 @@ module TopControl_tb;
 
 
         // =================================================
-        // PRUEBA 6: DISPLAY MUESTRA FALLO = 01
-        //
-        // AN0 = unidades de fallos
+        // PRUEBA 7: DISPLAY FALLOS = 01
         // =================================================
 
         wait (
@@ -428,7 +479,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -438,12 +488,11 @@ module TopControl_tb;
         end
 
 
-        @(posedge clk);
-        #1;
+        wait (LlamadaTopoOut == 1'b0);
 
 
         // =================================================
-        // PRUEBA 7: SEGUNDO FALLO
+        // PRUEBA 8: SEGUNDO FALLO
         //
         // Topo = 5
         // Botón = 6
@@ -465,7 +514,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -475,12 +523,11 @@ module TopControl_tb;
         end
 
 
-        @(posedge clk);
-        #1;
+        wait (LlamadaTopoOut == 1'b0);
 
 
         // =================================================
-        // PRUEBA 8: TERCER FALLO -> GAME OVER
+        // PRUEBA 9: TERCER FALLO -> GAME OVER
         //
         // Topo = 1
         // Botón = 7
@@ -522,7 +569,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -553,7 +599,7 @@ module TopControl_tb;
 
 
         // =================================================
-        // PRUEBA 9: RESET DURANTE GAME OVER
+        // PRUEBA 10: RESET DURANTE GAME OVER
         // =================================================
 
         RESET = 1'b1;
@@ -570,7 +616,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -589,7 +634,6 @@ module TopControl_tb;
             );
 
         end
-
         else begin
 
             $error(
@@ -599,23 +643,47 @@ module TopControl_tb;
         end
 
 
-        if ((LED_GameOver   == 1'b0) &&
-            (LlamadaTopoOut == 1'b1))
-        begin
-
+        if (LED_GameOver == 1'b0)
             $display(
-                "PASS: RESET sale de GameOver y solicita nuevo topo"
+                "PASS: RESET sale de GameOver"
             );
-
-        end
-
-        else begin
-
+        else
             $error(
-                "ERROR: Estado posterior a RESET incorrecto"
+                "ERROR: RESET no salio de GameOver"
             );
 
-        end
+
+        // Nueva diferencia:
+        // durante RESET el extensor debe estar apagado
+
+        if (LlamadaTopoOut == 1'b0)
+            $display(
+                "PASS: LlamadaTopoOut se limpia con RESET"
+            );
+        else
+            $error(
+                "ERROR: LlamadaTopoOut no se limpio con RESET"
+            );
+
+
+        // =================================================
+        // PRUEBA 11: NUEVA LLAMADA DESPUÉS DE RESET
+        // =================================================
+
+        RESET = 1'b0;
+
+        @(posedge clk);
+        #1;
+
+
+        if (LlamadaTopoOut == 1'b1)
+            $display(
+                "PASS: Despues de RESET se genera nueva solicitud de topo"
+            );
+        else
+            $error(
+                "ERROR: No se genero solicitud despues de RESET"
+            );
 
 
         // =================================================
