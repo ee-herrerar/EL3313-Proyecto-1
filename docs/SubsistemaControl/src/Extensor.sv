@@ -6,39 +6,39 @@ module ExtensorLlamadaTopo (
     output logic LlamadaTopoOut
 );
 
-    // 100 MHz -> 100000 ciclos = 1 ms
-    logic [16:0] Contador;
-
+    // 100 MHz -> 10 ns por ciclo
+    // 250 ns -> 25 ciclos
+    logic [4:0] Contador;
 
     always_ff @(posedge clk or posedge RESET) begin
 
         if (RESET) begin
-            Contador         <= 17'd0;
-            LlamadaTopoOut   <= 1'b0;
+            Contador        <= 5'd0;
+            LlamadaTopoOut  <= 1'b0;
         end
 
-        // La FSM genera el pulso original
+        // Inicia la extensión cuando llega el pulso
         else if (LlamadaTopoIn && !LlamadaTopoOut) begin
-            Contador         <= 17'd0;
-            LlamadaTopoOut   <= 1'b1;
+            Contador        <= 5'd0;
+            LlamadaTopoOut  <= 1'b1;
         end
 
-        // Mientras el pulso extendido esté activo
+        // Mantiene la salida activa durante 25 ciclos
         else if (LlamadaTopoOut) begin
 
-            if (Contador == 17'd99999) begin
-                Contador       <= 17'd0;
-                LlamadaTopoOut <= 1'b0;
+            if (Contador == 5'd24) begin
+                Contador        <= 5'd0;
+                LlamadaTopoOut  <= 1'b0;
             end
 
             else begin
-                Contador <= Contador + 17'd1;
+                Contador <= Contador + 5'd1;
             end
 
         end
 
         else begin
-            Contador <= 17'd0;
+            Contador <= 5'd0;
         end
 
     end

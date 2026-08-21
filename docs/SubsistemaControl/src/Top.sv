@@ -85,7 +85,7 @@ module TopControl (
             Sync2Step sync_inst (
                 .clk          (clk),
                 .reset        (RESET),
-                .async_signal (BotonesRaw[i]),
+                .async_signal (~BotonesRaw[i]),
                 .sync_signal  (BotonesSync[i])
             );
 
