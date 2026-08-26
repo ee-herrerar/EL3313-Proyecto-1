@@ -30,13 +30,19 @@ Por ultimo, para una secuencia iniciada en 001 se esperaría 001 → 100 → 110
 #### Decodificador 74LS138
 El 74LS138 permite convertir las tres señales binarias del LFSR en una de ocho salidas.
 
-<img width="665" height="383" alt="Captura de pantalla 2026-08-26 135259" src="https://github.com/user-attachments/assets/d0999dac-fa36-4a0f-b827-b86a099fbe61" />
+<img width="665" height="374" alt="Captura de pantalla 2026-08-26 135259" src="https://github.com/user-attachments/assets/d0999dac-fa36-4a0f-b827-b86a099fbe61" />
 
 Las ocho salidas se conectan a los LEDs correspondientes a las posiciones del juego.
+<img width="665" height="374"  alt="Diagrama de Primer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-PrimerNivel.png" />
 
+<img width="665" height="374"  alt="Diagrama de Segundo Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-SegundoNivel.png" />
+
+
+<img width="665" height="374" alt="Diagrama de Tercer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/blob/raw/docs/ImagenesDocu/DiagramaBloques-TercerNivel.png" />
 ### Subsistema de control en FPGA
+### Diagramas Del Proyecto
 
-
+https://github.com/ee-herrerar/EL3313-Proyecto-1/blob/00472bc12ec72735bda6e2ee6712fea37e290088/docs/ImagenesDocu/DiagramaBloques-PrimerNivel.png
 ### Comunicación UART
 
 
