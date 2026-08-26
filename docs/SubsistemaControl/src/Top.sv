@@ -2,23 +2,23 @@ module TopControl(
     input  logic       clk,
     input  logic       RESET,
 
-    // Switch para habilitar la UART simulada
+    // Switch para habilitar la prueba aislada
     input  logic       SW0,
 
     // Botones externos del juego
     input  logic [7:0] BotonesRaw,
 
-    // UART física
+    // UART física proveniente del circuito discreto
     input  logic       UART_RX,
 
-    // Solicitud hacia circuito externo
+    // Solicitud de nuevo topo hacia el circuito discreto
     output logic       LlamadaTopoOut,
 
     // LEDs de estado
     output logic       LED_Activo,
     output logic       LED_GameOver,
 
-    // LEDs que representan los 8 topos
+    // LEDs temporales para visualizar los 8 topos
     output logic [7:0] LED_Topo,
 
     // Display de 7 segmentos
@@ -32,10 +32,13 @@ module TopControl(
     // CONFIGURACIÓN
     // ============================================================
     //
-    // 1 = utilizar SW0 para simular respuestas UART
-    // 0 = utilizar la UART física conectada a UART_RX
+    // 1 -> Prueba aislada:
+    //      SW0 simula respuestas UART y la FPGA genera el topo.
     //
-    // Para la prueba actual dejar en 1.
+    // 0 -> Versión final:
+    //      UART_RX recibe la posición desde el circuito discreto.
+    //
+    // Para las pruebas actuales dejar en 1.
     // ============================================================
 
     localparam logic USAR_UART_SIMULADA = 1'b1;
@@ -53,7 +56,7 @@ module TopControl(
 
 
     // ============================================================
-    // SW0 - CONTROL DE UART SIMULADA
+    // SW0 - PRUEBA AISLADA
     // ============================================================
 
     logic SW0Sync;
@@ -71,14 +74,15 @@ module TopControl(
     logic       UARTValidReal;
     logic [7:0] UARTData;
 
+
+    // ============================================================
+    // SEÑALES SELECCIONADAS PARA LA FSM
+    // ============================================================
+
     logic       UARTValid;
 
-
-    // ============================================================
-    // TOPO
-    // ============================================================
-
     logic [2:0] TopoPosicion;
+    logic [2:0] TopoPosicionAleatoria;
 
 
     // ============================================================
@@ -119,21 +123,15 @@ module TopControl(
 
 
     // ============================================================
-    // SINCRONIZACIÓN Y DEBOUNCE
-    // DE LOS 8 BOTONES EXTERNOS
+    // SINCRONIZACIÓN Y DEBOUNCE DE BOTONES EXTERNOS
     //
-    // Los botones externos son activos en LOW:
-    //
-    // Suelto      = 1
-    // Presionado  = 0
-    //
+    // Los botones externos son activos en LOW.
     // Por eso se invierten antes del sincronizador.
     // ============================================================
 
     genvar i;
 
     generate
-
         for (i = 0; i < 8; i = i + 1) begin : GEN_BOTONES
 
             Sync2Step SyncBoton (
@@ -143,7 +141,6 @@ module TopControl(
                 .sync_signal  (BotonesSync[i])
             );
 
-
             debounce DebounceBoton (
                 .clk     (clk),
                 .btn_in  (BotonesSync[i]),
@@ -151,12 +148,11 @@ module TopControl(
             );
 
         end
-
     endgenerate
 
 
     // ============================================================
-    // DECODIFICACIÓN DE LOS BOTONES
+    // DECODIFICACIÓN DE BOTONES
     // ============================================================
 
     Botones Botones_inst (
@@ -182,9 +178,6 @@ module TopControl(
 
     // ============================================================
     // DEBOUNCE DE SW0
-    //
-    // Evita que el rebote mecánico del switch genere varias
-    // recepciones UART falsas.
     // ============================================================
 
     debounce DebounceSW0 (
@@ -197,16 +190,17 @@ module TopControl(
     // ============================================================
     // UART VALID SIMULADO
     //
-    // Hay dos situaciones que generan una respuesta UART:
+    // SW0 = 0:
+    //      No se generan respuestas simuladas.
     //
-    // 1. SW0 cambia de 0 -> 1
-    //    Esto inicia el juego cuando la FSM ya está esperando.
+    // SW0 pasa 0 -> 1:
+    //      Se genera la primera respuesta.
     //
-    // 2. SW0 continúa en 1 y GameFSM genera LlamadaTopoFSM
-    //    Esto simula que el circuito externo responde
-    //    automáticamente con el siguiente topo.
+    // SW0 permanece en 1:
+    //      Cada nueva LlamadaTopoFSM genera automáticamente
+    //      una nueva respuesta simulada.
     //
-    // UARTValidSimulado dura solamente 1 ciclo de clk.
+    // UARTValidSimulado dura solamente 1 ciclo.
     // ============================================================
 
     always_ff @(posedge clk or posedge RESET) begin
@@ -219,34 +213,18 @@ module TopControl(
         end
         else begin
 
-            // Por defecto UARTValid está apagado
             UARTValidSimulado <= 1'b0;
 
-
-            // ----------------------------------------------------
-            // SW0 acaba de encenderse
-            // ----------------------------------------------------
-
+            // Primer inicio del juego
             if (SW0Debounced && !SW0Prev) begin
-
                 UARTValidSimulado <= 1'b1;
-
             end
 
-
-            // ----------------------------------------------------
-            // El juego ya está habilitado
-            // y la FSM solicita un nuevo topo
-            // ----------------------------------------------------
-
+            // Solicitudes siguientes
             else if (SW0Debounced && LlamadaTopoFSM) begin
-
                 UARTValidSimulado <= 1'b1;
-
             end
 
-
-            // Guardar estado anterior del switch
             SW0Prev <= SW0Debounced;
 
         end
@@ -256,9 +234,6 @@ module TopControl(
 
     // ============================================================
     // GENERADOR DE BAUDIOS
-    //
-    // Se conserva porque la UART física sigue formando parte
-    // del diseño.
     // ============================================================
 
     generador_baudios #(
@@ -274,6 +249,11 @@ module TopControl(
 
     // ============================================================
     // RECEPTOR UART FÍSICO
+    //
+    // En modo final:
+    //
+    // UARTValidReal -> indica byte recibido
+    // UARTData[2:0] -> posición enviada por circuito discreto
     // ============================================================
 
     uart_rx #(
@@ -290,40 +270,56 @@ module TopControl(
 
 
     // ============================================================
-    // SELECCIÓN UART
+    // GENERADOR DE TOPO PARA PRUEBAS AISLADAS
     //
-    // Por ahora:
-    //
-    // UARTValid = UARTValidSimulado
-    //
-    // En la versión con circuito discreto:
-    //
-    // UARTValid = UARTValidReal
-    // ============================================================
-
-    always_comb begin
-
-        if (USAR_UART_SIMULADA)
-            UARTValid = UARTValidSimulado;
-        else
-            UARTValid = UARTValidReal;
-
-    end
-
-
-    // ============================================================
-    // GENERADOR DE TOPO ALEATORIO
-    //
-    // Cada recepción UART válida selecciona una nueva
-    // posición entre 0 y 7.
+    // Solo se utiliza cuando USAR_UART_SIMULADA = 1.
     // ============================================================
 
     GeneradorTopoAleatorio GeneradorTopo_inst (
         .clk          (clk),
         .RESET        (RESET),
-        .GenerarTopo  (UARTValid),
-        .TopoPosicion (TopoPosicion)
+        .GenerarTopo  (UARTValidSimulado),
+        .TopoPosicion (TopoPosicionAleatoria)
     );
+
+
+    // ============================================================
+    // SELECCIÓN ENTRE MODO DE PRUEBA Y MODO FINAL
+    //
+    // PRUEBA:
+    //
+    // SW0
+    //  ↓
+    // UARTValidSimulado
+    //  ↓
+    // TopoPosicionAleatoria
+    //
+    //
+    // FINAL:
+    //
+    // UART_RX
+    //  ↓
+    // uart_rx
+    //  ↓
+    // UARTValidReal + UARTData[2:0]
+    // ============================================================
+
+    always_comb begin
+
+        if (USAR_UART_SIMULADA) begin
+
+            UARTValid    = UARTValidSimulado;
+            TopoPosicion = TopoPosicionAleatoria;
+
+        end
+        else begin
+
+            UARTValid    = UARTValidReal;
+            TopoPosicion = UARTData[2:0];
+
+        end
+
+    end
 
 
     // ============================================================
@@ -360,9 +356,6 @@ module TopControl(
 
     // ============================================================
     // EXTENSOR DE LLAMADA TOPO
-    //
-    // Extiende el pulso generado por la FSM para la salida
-    // física hacia el circuito discreto.
     // ============================================================
 
     ExtensorLlamadaTopo ExtensorLlamadaTopo_inst (
@@ -378,18 +371,18 @@ module TopControl(
     // ============================================================
 
     contadores Contadores_inst (
-        .clk                          (clk),
-        .RESET                        (RESET),
+        .clk                         (clk),
+        .RESET                       (RESET),
 
-        .AciertosSube                 (AciertosSube),
-        .FallosSube                   (FallosSube),
+        .AciertosSube                (AciertosSube),
+        .FallosSube                  (FallosSube),
 
-        .ReiniciarFallosConsecutivos  (ReiniciarFallosConsecutivos),
-        .ReiniciarJuego               (ReiniciarJuego),
+        .ReiniciarFallosConsecutivos (ReiniciarFallosConsecutivos),
+        .ReiniciarJuego              (ReiniciarJuego),
 
-        .AciertosTotales              (AciertosTotales),
-        .FallosTotales                (FallosTotales),
-        .FallosConsecutivos           (FallosConsecutivos)
+        .AciertosTotales             (AciertosTotales),
+        .FallosTotales               (FallosTotales),
+        .FallosConsecutivos          (FallosConsecutivos)
     );
 
 
@@ -464,16 +457,9 @@ module TopControl(
     // ============================================================
     // LEDs DE LOS TOPOS
     //
-    // Mientras TopoActivoOut = 1:
-    //
-    // Posición 0 -> LED_Topo[0]
-    // Posición 1 -> LED_Topo[1]
-    // ...
-    // Posición 7 -> LED_Topo[7]
-    //
-    // Cuando el topo deja de estar activo:
-    //
-    // LED_Topo = 0000_0000
+    // Estos LEDs sirven tanto para probar la FPGA aisladamente
+    // como para observar qué posición recibió por UART durante
+    // la integración final.
     // ============================================================
 
     always_comb begin
