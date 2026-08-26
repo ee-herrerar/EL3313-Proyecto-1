@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/diseño.md",
+                "file": "docs/Informe.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "diseño"
+              "title": "Informe"
             }
           }
         ]
@@ -190,6 +190,7 @@
   },
   "active": "28e7e87aabc39286",
   "lastOpenFiles": [
-    "docs/informe.md"
+    "docs/diseño.md",
+    "docs/Informe.md"
   ]
 }
