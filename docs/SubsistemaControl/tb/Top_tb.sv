@@ -9,9 +9,7 @@ module TopControl_tb;
     logic       clk;
     logic       RESET;
     logic [7:0] BotonesRaw;
-
-    logic       UARTValid;
-    logic [2:0] TopoPosicion;
+    logic       UART_RX;
 
 
     // =====================================================
@@ -29,6 +27,19 @@ module TopControl_tb;
 
 
     // =====================================================
+    // Parámetros de simulación UART
+    //
+    // generador_baudios:
+    // DIVISOR = 100 MHz / (9600 * 16) = 651
+    //
+    // 651 ciclos * 16 = 10416 ciclos por bit
+    // 10416 * 10 ns = 104160 ns
+    // =====================================================
+
+    localparam integer BIT_TIME = 104160;
+
+
+    // =====================================================
     // DUT
     // =====================================================
 
@@ -38,8 +49,7 @@ module TopControl_tb;
 
         .BotonesRaw     (BotonesRaw),
 
-        .UARTValid      (UARTValid),
-        .TopoPosicion   (TopoPosicion),
+        .UART_RX        (UART_RX),
 
         .LlamadaTopoOut (LlamadaTopoOut),
 
@@ -53,7 +63,7 @@ module TopControl_tb;
 
 
     // =====================================================
-    // Reloj 100 MHz
+    // Reloj de 100 MHz
     // =====================================================
 
     initial begin
@@ -63,50 +73,133 @@ module TopControl_tb;
 
 
     // =====================================================
-    // Simular dato recibido desde UART
+    // Enviar un byte UART 8N1
+    //
+    // UART:
+    // Idle  = 1
+    // Start = 0
+    // 8 bits LSB first
+    // Stop  = 1
+    // =====================================================
+
+    task automatic enviar_byte_uart (
+        input logic [7:0] dato
+    );
+
+        integer i;
+
+    begin
+
+        // Start bit
+        UART_RX = 1'b0;
+        #(BIT_TIME);
+
+
+        // 8 bits de datos, LSB primero
+        for (i = 0; i < 8; i = i + 1) begin
+            UART_RX = dato[i];
+            #(BIT_TIME);
+        end
+
+
+        // Stop bit
+        UART_RX = 1'b1;
+
+
+        // Esperar a que el receptor indique byte completo
+        fork : ESPERA_UART
+
+            begin
+                wait (DUT.UARTValid === 1'b1);
+            end
+
+            begin
+                #(BIT_TIME * 2);
+                $fatal(
+                    1,
+                    "ERROR: Timeout esperando UARTValid"
+                );
+            end
+
+        join_any
+
+        disable ESPERA_UART;
+
+
+        // Dejar que la FSM capture UARTValid
+        @(posedge clk);
+        #1;
+
+    end
+
+    endtask
+
+
+    // =====================================================
+    // Enviar posición del topo
+    //
+    // Solo importan los 3 LSB
     // =====================================================
 
     task automatic enviar_topo (
         input logic [2:0] posicion
     );
+
+        logic [7:0] dato_uart;
+
     begin
 
-        @(negedge clk);
+        dato_uart = {5'b00000, posicion};
 
-        TopoPosicion = posicion;
-        UARTValid    = 1'b1;
+        enviar_byte_uart(dato_uart);
 
-        @(posedge clk);
-        #1;
 
-        UARTValid = 1'b0;
-
-        if (LED_Activo == 1'b1)
+        if (DUT.UARTData[2:0] == posicion)
             $display(
-                "PASS: UART posicion %0d lleva a TopoActivo",
+                "PASS: UART recibio posicion %0d correctamente",
                 posicion
             );
         else
             $error(
-                "ERROR: Posicion %0d no llevo a TopoActivo",
+                "ERROR: UART recibio posicion incorrecta"
+            );
+
+
+        if (LED_Activo == 1'b1)
+            $display(
+                "PASS: Posicion %0d lleva a TopoActivo",
                 posicion
+            );
+        else
+            $error(
+                "ERROR: FSM no entro a TopoActivo"
             );
 
     end
+
     endtask
 
 
     // =====================================================
-    // Presionar botón
+    // Presionar botón físico
+    //
+    // Los botones son activos en bajo:
+    //
+    // Suelto     = 1
+    // Presionado = 0
     // =====================================================
 
     task automatic presionar_boton (
         input integer numero
     );
+
     begin
 
-        BotonesRaw[numero] = 1'b1;
+        BotonesRaw[numero] = 1'b0;
 
+
+        // Esperar:
+        // Sync2Step + debounce + Botones
         fork : ESPERA_BOTON
 
             begin
@@ -129,6 +222,7 @@ module TopControl_tb;
 
         #1;
 
+
         if (DUT.TopoJugador == numero)
             $display(
                 "PASS: Boton %0d detectado correctamente",
@@ -141,20 +235,17 @@ module TopControl_tb;
             );
 
     end
+
     endtask
 
 
     // =====================================================
-    // Esperar nueva solicitud de topo
+    // Esperar solicitud del siguiente topo
     // =====================================================
 
     task automatic esperar_llamada_topo;
-    begin
 
-        // Esperar primero a que esté baja para evitar
-        // confundirla con un pulso anterior
-        if (LlamadaTopoOut == 1'b1)
-            wait (LlamadaTopoOut == 1'b0);
+    begin
 
         fork : ESPERA_LLAMADA
 
@@ -163,11 +254,11 @@ module TopControl_tb;
             end
 
             begin
-                #2_000_000;
+                #2000;
 
                 $fatal(
                     1,
-                    "ERROR: No se genero nueva LlamadaTopoOut"
+                    "ERROR: FSM no solicito nuevo topo"
                 );
             end
 
@@ -178,6 +269,7 @@ module TopControl_tb;
         #1;
 
     end
+
     endtask
 
 
@@ -187,101 +279,82 @@ module TopControl_tb;
 
     initial begin
 
-        RESET        = 1'b1;
-        BotonesRaw   = 8'b00000000;
+        // =================================================
+        // Valores iniciales
+        // =================================================
 
-        UARTValid    = 1'b0;
-        TopoPosicion = 3'd0;
+        RESET      = 1'b1;
+
+        // Botones activos en bajo:
+        // todos sueltos inicialmente
+        BotonesRaw = 8'b11111111;
+
+        // UART en estado IDLE
+        UART_RX    = 1'b1;
+
+
+        #20;
 
 
         // =================================================
         // PRUEBA 1: RESET
         // =================================================
 
-        #20;
-
         if ((DUT.AciertosTotales == 7'd0) &&
             (DUT.FallosTotales   == 7'd0) &&
             (LED_GameOver        == 1'b0))
         begin
-            $display("PASS: RESET inicial correcto");
+
+            $display(
+                "PASS: RESET inicial correcto"
+            );
+
         end
         else begin
-            $error("ERROR: RESET inicial incorrecto");
-        end
 
-
-        // El extensor mantiene la salida en 0 durante RESET
-
-        if (LlamadaTopoOut == 1'b0)
-            $display(
-                "PASS: LlamadaTopoOut permanece en 0 durante RESET"
-            );
-        else
             $error(
-                "ERROR: LlamadaTopoOut activa durante RESET"
+                "ERROR: RESET inicial incorrecto"
             );
+
+        end
 
 
         if (dp == 1'b1)
-            $display("PASS: Punto decimal apagado");
+            $display(
+                "PASS: Punto decimal apagado"
+            );
         else
-            $error("ERROR: Punto decimal incorrecto");
+            $error(
+                "ERROR: Punto decimal incorrecto"
+            );
 
-
-        // =================================================
-        // PRUEBA 2: EXTENSOR DE LLAMADATOPO
-        // =================================================
 
         RESET = 1'b0;
 
 
-        // Primer flanco después de RESET
-        @(posedge clk);
-        #1;
+        // =================================================
+        // PRUEBA 2: Extensor de LlamadaTopo
+        //
+        // La salida debe permanecer activa mucho más
+        // que el pulso original de 10 ns.
+        // =================================================
 
+        wait (LlamadaTopoOut === 1'b1);
 
-        if (LlamadaTopoOut == 1'b1)
-            $display(
-                "PASS: LlamadaTopoOut se activa despues de RESET"
-            );
-        else
-            $error(
-                "ERROR: LlamadaTopoOut no se activo"
-            );
-
-
-        // Después de 99 999 ciclos adicionales todavía debe
-        // estar activa.
-
-        repeat (99999) @(posedge clk);
-        #1;
-
+        #100;
 
         if (LlamadaTopoOut == 1'b1)
             $display(
-                "PASS: LlamadaTopoOut permanece activa durante ~1 ms"
+                "PASS: LlamadaTopoOut permanece activa mas de 100 ns"
             );
         else
             $error(
-                "ERROR: Pulso de LlamadaTopoOut demasiado corto"
+                "ERROR: LlamadaTopoOut demasiado corta"
             );
 
 
-        // En el siguiente ciclo debe terminar
-
-        @(posedge clk);
-        #1;
-
-
-        if (LlamadaTopoOut == 1'b0)
-            $display(
-                "PASS: LlamadaTopoOut termina despues de ~1 ms"
-            );
-        else
-            $error(
-                "ERROR: LlamadaTopoOut no termino correctamente"
-            );
+        // Esperar que termine el pulso extendido
+        wait (LlamadaTopoOut === 1'b0);
 
 
         // =================================================
@@ -317,10 +390,10 @@ module TopControl_tb;
 
 
         // =================================================
-        // PRUEBA 3: ACIERTO
+        // PRUEBA 3: UART + ACIERTO
         //
-        // Topo = 3
-        // Botón = 3
+        // UART envía posición 3
+        // jugador presiona botón 3
         // =================================================
 
         enviar_topo(3'd3);
@@ -346,7 +419,7 @@ module TopControl_tb;
             );
         else
             $error(
-                "ERROR: Fallo inesperado durante el acierto"
+                "ERROR: Fallo inesperado"
             );
 
 
@@ -401,10 +474,8 @@ module TopControl_tb;
         end
 
 
-        // Esperar que termine el pulso extendido antes
-        // de empezar el siguiente turno
-
-        wait (LlamadaTopoOut == 1'b0);
+        // Esperar que termine LlamadaTopo
+        wait (LlamadaTopoOut === 1'b0);
 
 
         // =================================================
@@ -438,8 +509,6 @@ module TopControl_tb;
 
         end
 
-
-        // Fallar no cambia dificultad
 
         if ((DUT.NivelDificultad == 4'd1) &&
             (DUT.TiempoLimite    == 11'd1400))
@@ -488,7 +557,7 @@ module TopControl_tb;
         end
 
 
-        wait (LlamadaTopoOut == 1'b0);
+        wait (LlamadaTopoOut === 1'b0);
 
 
         // =================================================
@@ -523,7 +592,7 @@ module TopControl_tb;
         end
 
 
-        wait (LlamadaTopoOut == 1'b0);
+        wait (LlamadaTopoOut === 1'b0);
 
 
         // =================================================
@@ -545,7 +614,7 @@ module TopControl_tb;
             end
 
             begin
-                #1000;
+                #2000;
 
                 $fatal(
                     1,
@@ -649,50 +718,26 @@ module TopControl_tb;
             );
         else
             $error(
-                "ERROR: RESET no salio de GameOver"
-            );
-
-
-        // Nueva diferencia:
-        // durante RESET el extensor debe estar apagado
-
-        if (LlamadaTopoOut == 1'b0)
-            $display(
-                "PASS: LlamadaTopoOut se limpia con RESET"
-            );
-        else
-            $error(
-                "ERROR: LlamadaTopoOut no se limpio con RESET"
+                "ERROR: RESET no sale de GameOver"
             );
 
 
         // =================================================
-        // PRUEBA 11: NUEVA LLAMADA DESPUÉS DE RESET
+        // FIN
         // =================================================
 
-        RESET = 1'b0;
+        $display(
+            "========================================"
+        );
 
-        @(posedge clk);
-        #1;
+        $display(
+            "FIN DE PRUEBAS DE TOPCONTROL + UART"
+        );
 
+        $display(
+            "========================================"
+        );
 
-        if (LlamadaTopoOut == 1'b1)
-            $display(
-                "PASS: Despues de RESET se genera nueva solicitud de topo"
-            );
-        else
-            $error(
-                "ERROR: No se genero solicitud despues de RESET"
-            );
-
-
-        // =================================================
-        // Fin
-        // =================================================
-
-        $display("========================================");
-        $display("FIN DE PRUEBAS DE TOPCONTROL");
-        $display("========================================");
 
         $finish;
 

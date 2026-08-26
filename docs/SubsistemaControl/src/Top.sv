@@ -1,20 +1,25 @@
-module TopControl (
+module TopControl(
     input  logic       clk,
     input  logic       RESET,
 
-    // Botones físicos
+    // Switch para habilitar la UART simulada
+    input  logic       SW0,
+
+    // Botones externos del juego
     input  logic [7:0] BotonesRaw,
 
-    // Señales provenientes del módulo UART externo
-    input  logic       UARTValid,
-    input  logic [2:0] TopoPosicion,
+    // UART física
+    input  logic       UART_RX,
 
-    // Solicitud hacia la lógica discreta
+    // Solicitud hacia circuito externo
     output logic       LlamadaTopoOut,
 
     // LEDs de estado
     output logic       LED_Activo,
     output logic       LED_GameOver,
+
+    // LEDs que representan los 8 topos
+    output logic [7:0] LED_Topo,
 
     // Display de 7 segmentos
     output logic [6:0] seg,
@@ -23,9 +28,22 @@ module TopControl (
 );
 
 
-    // =====================================================
-    // Señales internas - Botones
-    // =====================================================
+    // ============================================================
+    // CONFIGURACIÓN
+    // ============================================================
+    //
+    // 1 = utilizar SW0 para simular respuestas UART
+    // 0 = utilizar la UART física conectada a UART_RX
+    //
+    // Para la prueba actual dejar en 1.
+    // ============================================================
+
+    localparam logic USAR_UART_SIMULADA = 1'b1;
+
+
+    // ============================================================
+    // BOTONES EXTERNOS
+    // ============================================================
 
     logic [7:0] BotonesSync;
     logic [7:0] BotonesDebounced;
@@ -34,10 +52,40 @@ module TopControl (
     logic [2:0] TopoJugador;
 
 
-    // =====================================================
-    // Señales internas - FSM
-    // =====================================================
+    // ============================================================
+    // SW0 - CONTROL DE UART SIMULADA
+    // ============================================================
 
+    logic SW0Sync;
+    logic SW0Debounced;
+    logic SW0Prev;
+
+    logic UARTValidSimulado;
+
+
+    // ============================================================
+    // UART FÍSICA
+    // ============================================================
+
+    logic       s_tick;
+    logic       UARTValidReal;
+    logic [7:0] UARTData;
+
+    logic       UARTValid;
+
+
+    // ============================================================
+    // TOPO
+    // ============================================================
+
+    logic [2:0] TopoPosicion;
+
+
+    // ============================================================
+    // FSM
+    // ============================================================
+
+    logic LlamadaTopoFSM;
     logic TopoActivoOut;
 
     logic AciertosSube;
@@ -52,37 +100,43 @@ module TopControl (
 
     logic TiempoFuera;
 
-    // Pulso original de la FSM
-    logic LlamadaTopoFSM;
 
-
-    // =====================================================
-    // Señales internas - Contadores
-    // =====================================================
+    // ============================================================
+    // CONTADORES
+    // ============================================================
 
     logic [6:0] AciertosTotales;
     logic [6:0] FallosTotales;
     logic [1:0] FallosConsecutivos;
 
 
-    // =====================================================
-    // Señales internas - Dificultad
-    // =====================================================
+    // ============================================================
+    // DIFICULTAD
+    // ============================================================
 
     logic [3:0]  NivelDificultad;
     logic [10:0] TiempoLimite;
 
 
-    // =====================================================
-    // Sincronización + Debounce de los 8 botones
-    // =====================================================
+    // ============================================================
+    // SINCRONIZACIÓN Y DEBOUNCE
+    // DE LOS 8 BOTONES EXTERNOS
+    //
+    // Los botones externos son activos en LOW:
+    //
+    // Suelto      = 1
+    // Presionado  = 0
+    //
+    // Por eso se invierten antes del sincronizador.
+    // ============================================================
 
     genvar i;
 
     generate
+
         for (i = 0; i < 8; i = i + 1) begin : GEN_BOTONES
 
-            Sync2Step sync_inst (
+            Sync2Step SyncBoton (
                 .clk          (clk),
                 .reset        (RESET),
                 .async_signal (~BotonesRaw[i]),
@@ -90,35 +144,193 @@ module TopControl (
             );
 
 
-            debounce debounce_inst (
+            debounce DebounceBoton (
                 .clk     (clk),
                 .btn_in  (BotonesSync[i]),
                 .btn_out (BotonesDebounced[i])
             );
 
         end
+
     endgenerate
 
 
-    // =====================================================
-    // Identificación del botón
-    // =====================================================
+    // ============================================================
+    // DECODIFICACIÓN DE LOS BOTONES
+    // ============================================================
 
-    Botones botones_inst (
+    Botones Botones_inst (
         .clk              (clk),
         .RESET            (RESET),
         .BotonesDebounced (BotonesDebounced),
-
         .BotonValido      (BotonValido),
         .TopoJugador      (TopoJugador)
     );
 
 
-    // =====================================================
-    // FSM principal
-    // =====================================================
+    // ============================================================
+    // SINCRONIZACIÓN DE SW0
+    // ============================================================
 
-    GameFSM fsm_inst (
+    Sync2Step SyncSW0 (
+        .clk          (clk),
+        .reset        (RESET),
+        .async_signal (SW0),
+        .sync_signal  (SW0Sync)
+    );
+
+
+    // ============================================================
+    // DEBOUNCE DE SW0
+    //
+    // Evita que el rebote mecánico del switch genere varias
+    // recepciones UART falsas.
+    // ============================================================
+
+    debounce DebounceSW0 (
+        .clk     (clk),
+        .btn_in  (SW0Sync),
+        .btn_out (SW0Debounced)
+    );
+
+
+    // ============================================================
+    // UART VALID SIMULADO
+    //
+    // Hay dos situaciones que generan una respuesta UART:
+    //
+    // 1. SW0 cambia de 0 -> 1
+    //    Esto inicia el juego cuando la FSM ya está esperando.
+    //
+    // 2. SW0 continúa en 1 y GameFSM genera LlamadaTopoFSM
+    //    Esto simula que el circuito externo responde
+    //    automáticamente con el siguiente topo.
+    //
+    // UARTValidSimulado dura solamente 1 ciclo de clk.
+    // ============================================================
+
+    always_ff @(posedge clk or posedge RESET) begin
+
+        if (RESET) begin
+
+            SW0Prev           <= 1'b0;
+            UARTValidSimulado <= 1'b0;
+
+        end
+        else begin
+
+            // Por defecto UARTValid está apagado
+            UARTValidSimulado <= 1'b0;
+
+
+            // ----------------------------------------------------
+            // SW0 acaba de encenderse
+            // ----------------------------------------------------
+
+            if (SW0Debounced && !SW0Prev) begin
+
+                UARTValidSimulado <= 1'b1;
+
+            end
+
+
+            // ----------------------------------------------------
+            // El juego ya está habilitado
+            // y la FSM solicita un nuevo topo
+            // ----------------------------------------------------
+
+            else if (SW0Debounced && LlamadaTopoFSM) begin
+
+                UARTValidSimulado <= 1'b1;
+
+            end
+
+
+            // Guardar estado anterior del switch
+            SW0Prev <= SW0Debounced;
+
+        end
+
+    end
+
+
+    // ============================================================
+    // GENERADOR DE BAUDIOS
+    //
+    // Se conserva porque la UART física sigue formando parte
+    // del diseño.
+    // ============================================================
+
+    generador_baudios #(
+        .SYS_CLK_FREQ (100_000_000),
+        .BAUD_RATE    (9600),
+        .OVERSAMPLE   (16)
+    ) GeneradorBaudios_inst (
+        .clk    (clk),
+        .reset  (RESET),
+        .s_tick (s_tick)
+    );
+
+
+    // ============================================================
+    // RECEPTOR UART FÍSICO
+    // ============================================================
+
+    uart_rx #(
+        .DBIT    (8),
+        .SB_TICK (16)
+    ) UART_RX_inst (
+        .clk          (clk),
+        .reset        (RESET),
+        .rx           (UART_RX),
+        .s_tick       (s_tick),
+        .rx_done_tick (UARTValidReal),
+        .dout         (UARTData)
+    );
+
+
+    // ============================================================
+    // SELECCIÓN UART
+    //
+    // Por ahora:
+    //
+    // UARTValid = UARTValidSimulado
+    //
+    // En la versión con circuito discreto:
+    //
+    // UARTValid = UARTValidReal
+    // ============================================================
+
+    always_comb begin
+
+        if (USAR_UART_SIMULADA)
+            UARTValid = UARTValidSimulado;
+        else
+            UARTValid = UARTValidReal;
+
+    end
+
+
+    // ============================================================
+    // GENERADOR DE TOPO ALEATORIO
+    //
+    // Cada recepción UART válida selecciona una nueva
+    // posición entre 0 y 7.
+    // ============================================================
+
+    GeneradorTopoAleatorio GeneradorTopo_inst (
+        .clk          (clk),
+        .RESET        (RESET),
+        .GenerarTopo  (UARTValid),
+        .TopoPosicion (TopoPosicion)
+    );
+
+
+    // ============================================================
+    // FSM PRINCIPAL
+    // ============================================================
+
+    GameFSM GameFSM_inst (
         .clk                         (clk),
         .RESET                       (RESET),
 
@@ -129,21 +341,16 @@ module TopControl (
         .BotonValido                 (BotonValido),
 
         .TiempoFuera                 (TiempoFuera),
-
         .FallosConsecutivos          (FallosConsecutivos),
-
         .GameOverDone                (GameOverDone),
 
-        // Ahora sale primero a una señal interna
         .LlamadaTopoOut              (LlamadaTopoFSM),
-
         .TopoActivoOut               (TopoActivoOut),
 
         .AciertosSube                (AciertosSube),
         .FallosSube                  (FallosSube),
 
         .ReiniciarFallosConsecutivos (ReiniciarFallosConsecutivos),
-
         .ReajusteRelojOut            (ReajusteRelojOut),
 
         .GameOverOut                 (GameOverOut),
@@ -151,14 +358,14 @@ module TopControl (
     );
 
 
-    // =====================================================
-    // Extensor de LlamadaTopo
+    // ============================================================
+    // EXTENSOR DE LLAMADA TOPO
     //
-    // Convierte el pulso de 1 ciclo de la FSM
-    // en un pulso de aproximadamente 1 ms
-    // =====================================================
+    // Extiende el pulso generado por la FSM para la salida
+    // física hacia el circuito discreto.
+    // ============================================================
 
-    ExtensorLlamadaTopo extensor_inst (
+    ExtensorLlamadaTopo ExtensorLlamadaTopo_inst (
         .clk            (clk),
         .RESET          (RESET),
         .LlamadaTopoIn  (LlamadaTopoFSM),
@@ -166,31 +373,31 @@ module TopControl (
     );
 
 
-    // =====================================================
-    // Contadores
-    // =====================================================
+    // ============================================================
+    // CONTADORES DEL JUEGO
+    // ============================================================
 
-    contadores contadores_inst (
-        .clk                         (clk),
-        .RESET                       (RESET),
+    contadores Contadores_inst (
+        .clk                          (clk),
+        .RESET                        (RESET),
 
-        .AciertosSube                (AciertosSube),
-        .FallosSube                  (FallosSube),
+        .AciertosSube                 (AciertosSube),
+        .FallosSube                   (FallosSube),
 
-        .ReiniciarFallosConsecutivos (ReiniciarFallosConsecutivos),
-        .ReiniciarJuego              (ReiniciarJuego),
+        .ReiniciarFallosConsecutivos  (ReiniciarFallosConsecutivos),
+        .ReiniciarJuego               (ReiniciarJuego),
 
-        .AciertosTotales             (AciertosTotales),
-        .FallosTotales               (FallosTotales),
-        .FallosConsecutivos          (FallosConsecutivos)
+        .AciertosTotales              (AciertosTotales),
+        .FallosTotales                (FallosTotales),
+        .FallosConsecutivos           (FallosConsecutivos)
     );
 
 
-    // =====================================================
-    // Dificultad
-    // =====================================================
+    // ============================================================
+    // DIFICULTAD
+    // ============================================================
 
-    Dificultad dificultad_inst (
+    Dificultad Dificultad_inst (
         .clk              (clk),
         .RESET            (RESET),
 
@@ -202,11 +409,11 @@ module TopControl (
     );
 
 
-    // =====================================================
-    // Temporizador del topo
-    // =====================================================
+    // ============================================================
+    // TEMPORIZADOR
+    // ============================================================
 
-    Temporizador temporizador_inst (
+    Temporizador Temporizador_inst (
         .clk           (clk),
         .RESET         (RESET),
 
@@ -217,25 +424,23 @@ module TopControl (
     );
 
 
-    // =====================================================
-    // Temporizador de Game Over
-    // =====================================================
+    // ============================================================
+    // GAME OVER
+    // ============================================================
 
-    GameOverScreen gameover_inst (
+    GameOverScreen GameOverScreen_inst (
         .clk          (clk),
         .RESET        (RESET),
-
         .GameOverOut  (GameOverOut),
-
         .GameOverDone (GameOverDone)
     );
 
 
-    // =====================================================
-    // Displays de 7 segmentos
-    // =====================================================
+    // ============================================================
+    // DISPLAY DE 7 SEGMENTOS
+    // ============================================================
 
-    Display7Seg display_inst (
+    Display7Seg Display7Seg_inst (
         .clk             (clk),
         .RESET           (RESET),
 
@@ -248,12 +453,38 @@ module TopControl (
     );
 
 
-    // =====================================================
-    // LEDs
-    // =====================================================
+    // ============================================================
+    // LEDs DE ESTADO
+    // ============================================================
 
     assign LED_Activo   = TopoActivoOut;
     assign LED_GameOver = GameOverOut;
+
+
+    // ============================================================
+    // LEDs DE LOS TOPOS
+    //
+    // Mientras TopoActivoOut = 1:
+    //
+    // Posición 0 -> LED_Topo[0]
+    // Posición 1 -> LED_Topo[1]
+    // ...
+    // Posición 7 -> LED_Topo[7]
+    //
+    // Cuando el topo deja de estar activo:
+    //
+    // LED_Topo = 0000_0000
+    // ============================================================
+
+    always_comb begin
+
+        LED_Topo = 8'b0000_0000;
+
+        if (TopoActivoOut) begin
+            LED_Topo = 8'b0000_0001 << TopoPosicion;
+        end
+
+    end
 
 
 endmodule
