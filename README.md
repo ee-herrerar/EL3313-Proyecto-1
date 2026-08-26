@@ -118,6 +118,20 @@ Se utilizará un clock enable para controlar cuándo el contador del temporizado
 Para esta sección simplemente se requiere el designar cada uno de los estados del juego:
 - Game Over: Se alcanza cuando el jugador acumula tres fallos consecutivos. El sistema permanece en este estado durante al menos 2 segundos, indicando mediante el LED de estado que la partida ha terminado. Una vez transcurrido este tiempo, se reinician los valores correspondientes a la partida y la FSM vuelve a "Llamada Topo".
 - RESET: Corresponde a una condición global activada mediante el botón físico central de la tarjeta. Puede ejecutarse desde cualquier estado y provoca el reinicio inmediato de los valores asociados a la partida, llevando nuevamente la FSM a "Llamada Topo".
+
+Optimized tool selectionVoy a revisar los archivos principales del proyecto para describir correctamente la estructura y el comportamiento del sistema antes de redactarte la explicación.
+
+#### Estructura código
+- La parte de entrada está formada por los 8 botones externos, que se sincronizan y se filtran con un circuito de debounce para evitar pulsos espurios. Cada botón se interpreta como una posición de topo, y la lógica de detección produce una señal de “BotonValido” junto con el valor del botón pulsado.
+- La señal SW0 permite seleccionar entre una UART real o una simulación interna. Cuando se activa, se genera una validación de recepción UART para simular la respuesta del circuito externo, y así iniciar o continuar el flujo del juego.
+- La FSM principal es el núcleo del sistema. Maneja estados como solicitud de nuevo topo, espera de recepción, topo activo, acierto, fallo, tiempo agotado, verificación de fallos y game over. En cada transición, decide si se solicita el siguiente topo, si el jugador acertó, si aumenta la dificultad o si se termina la partida.
+- El módulo de generación del topo produce una posición aleatoria mediante un LFSR. Esa posición se entrega como TopoPosicion cuando llega una señal de validación UART, y la compara con la pulsación del jugador. Si coinciden, se considera acierto; si no, fallo.
+- El temporizador mide el tiempo durante el cual el topo está activo. El valor máximo depende del nivel de dificultad, que aumenta progresivamente tras cada acierto. Cuando se supera el tiempo permitido, se considera “TiempoFuera” y se contabiliza como fallo.
+- Los contadores llevan el registro de aciertos totales, fallos totales y fallos consecutivos. Si el jugador falla tres veces seguidas, se activa la pantalla de game over.
+- La lógica de Game Over genera una ventana de espera de 2 segundos antes de reiniciar la partida, y luego vuelve a la fase inicial para comenzar otra ronda.
+- La dificultad se calcula en función del número de aciertos. A medida que aumenta el nivel, el tiempo disponible para responder se reduce, haciendo el juego más exigente.
+- La salida visual se realiza con LEDs y un display de 7 segmentos. Los LEDs indican el estado del sistema y la posición del topo activo, mientras que el display multiplexado presenta los contadores de aciertos y fallos de forma legible.
+
 ### Resultados
 
 
