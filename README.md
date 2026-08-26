@@ -133,6 +133,10 @@ Optimized tool selectionVoy a revisar los archivos principales del proyecto para
 - La salida visual se realiza con LEDs y un display de 7 segmentos. Los LEDs indican el estado del sistema y la posición del topo activo, mientras que el display multiplexado presenta los contadores de aciertos y fallos de forma legible.
 
 ### Resultados
-
-
-### Conclusion
+#### Subsistema de Control
+- Se logra crear la maquina de estados correspondiente a la lógica necesaria de juego.
+- Se logra crear la función de reloj correspondiente a todo el sistema de manera general, ademas de lograr las restricciones temporales para cada uno de los niveles de dificultad sin utilizar diferentes relojes.
+- Se logra la implementación de la función de los displays ademas de la funcionalidad de las LEDs de la FPGA
+- Se logra la implementación física de los botones externos, ademas de lograr la sincronización y el debounce de los inputs.
+- Se logra la implementación de un sistema de pruebas para la FPGA y el subsistema de control de manera aislada, por lo que se puede revisar el subsistema por si solo.
+### Conclusión
