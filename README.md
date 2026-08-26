@@ -33,18 +33,32 @@ El 74LS138 permite convertir las tres señales binarias del LFSR en una de ocho 
 <img width="665" height="374" alt="Captura de pantalla 2026-08-26 135259" src="https://github.com/user-attachments/assets/d0999dac-fa36-4a0f-b827-b86a099fbe61" />
 
 Las ocho salidas se conectan a los LEDs correspondientes a las posiciones del juego.
-<img width="665" height="374"  alt="Diagrama de Primer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-PrimerNivel.png" />
 
-<img width="665" height="374"  alt="Diagrama de Segundo Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-SegundoNivel.png" />
-
-
-<img width="665" height="374" alt="Diagrama de Tercer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/blob/raw/docs/ImagenesDocu/DiagramaBloques-TercerNivel.png" />
 ### Subsistema de control en FPGA
-### Diagramas Del Proyecto
+#### Estructura Del Sistema
+##### Primer nivel
+Para la etapa del diseño se planteó una estructura dividida en tres etapas: Discreta (UART-TX y generador pseudoaleatorio, ambas etapas discretas), Botones (Conexiones de botones físicos) y FPGA (Programación bajo Basys 3). 
+Dicho orden se presenta a continuación:
 
-https://github.com/ee-herrerar/EL3313-Proyecto-1/blob/00472bc12ec72735bda6e2ee6712fea37e290088/docs/ImagenesDocu/DiagramaBloques-PrimerNivel.png
-### Comunicación UART
+<img style="width: 50%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Primer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-PrimerNivel.png" />
 
+
+##### Segundo Nivel
+Para esto se desglosa aspectos relevantes como la etapa discreta y la recepción por la FPGA tanto por las señales de botones como la de señal enviada por la UART. 
+Adicionalmente se tiene en consideración la presencia de la lógica del juego y salidas de las señales que regresan a la etapa discreta, así como la salida del sistema. Tal como puede verse a continuación:
+
+<img style="width: 50%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Segundo Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-SegundoNivel.png" />
+
+
+##### Tercer Nivel
+Se tiene el desglose completo, el cual involucra:
+- Etapa de sincronización y recepción de los datos discretos por parte de la UART.
+- Configuración de reset y el clock por defecto de la FPGA.
+- Tratamiento de los botones mediante sincronización (Para evitar Metaestabilidad), seguido de una etapa de antirebotes para asegurar entradas limpias a la FSM. 
+- Estructura de FSM y salidas del comportamiento hacia los timers y señales de topo
+- Comportamiento de las salidas a los Displays
+
+<img style="width: 50%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Tercer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-TercerNivel.png" />
 
 ### Resultados
 
