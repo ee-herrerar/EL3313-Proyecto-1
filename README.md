@@ -40,14 +40,14 @@ Las ocho salidas se conectan a los LEDs correspondientes a las posiciones del ju
 Para la etapa del diseño se planteó una estructura dividida en tres etapas: Discreta (UART-TX y generador pseudoaleatorio, ambas etapas discretas), Botones (Conexiones de botones físicos) y FPGA (Programación bajo Basys 3). 
 Dicho orden se presenta a continuación:
 
-<img style="width: 50%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Primer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-PrimerNivel.png" />
+<img style="width: 100%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Primer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-PrimerNivel.png" />
 
 
 ##### Segundo Nivel
 Para esto se desglosa aspectos relevantes como la etapa discreta y la recepción por la FPGA tanto por las señales de botones como la de señal enviada por la UART. 
 Adicionalmente se tiene en consideración la presencia de la lógica del juego y salidas de las señales que regresan a la etapa discreta, así como la salida del sistema. Tal como puede verse a continuación:
 
-<img style="width: 50%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Segundo Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-SegundoNivel.png" />
+<img style="width: 100%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Segundo Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-SegundoNivel.png" />
 
 
 ##### Tercer Nivel
@@ -58,7 +58,7 @@ Se tiene el desglose completo, el cual involucra:
 - Estructura de FSM y salidas del comportamiento hacia los timers y señales de topo
 - Comportamiento de las salidas a los Displays
 
-<img style="width: 50%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Tercer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-TercerNivel.png" />
+<img style="width: 100%; max-width: 665px; aspect-ratio: 16 / 9; object-fit: contain;" alt="Diagrama de Tercer Nivel Del Sistema" src="https://github.com/ee-herrerar/EL3313-Proyecto-1/raw/main/docs/ImagenesDocu/DiagramaBloques-TercerNivel.png" />
 
 
 #### Maquina de Estados
