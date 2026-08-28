@@ -42,7 +42,43 @@ Gestión de Vidas y Reinicio: Un acierto reinicia el contador de fallos consecut
 
 ## Circuito discreto
 Este sistema se encarga de seleccionas psudoaleatoriamente un led y lo enciende, funciona usando un registro de desplazamiento con retroalimentación lineal para generar un numero de tres bits cada vez que la fpga lo indique, este funciona con 3 flip flops en serie donde la entrada del primero es la salida de una compuerta xor cuyas entradas son las salidas de los otros flip flops, cada vez que la fpga envia la señal esta llega a la entrada de reloj para que los bits de salida que dan los fliop flops se desplazan generando asi un numero de tres bits. Una vez genrado el numero de tres bits, este pasa por el decodificador 74LS138 el cual dependiendo del numero binario generado anteriormente enciende una de las 8 posibles entradas, estas entradas se conectan a los 8 leds. Por ultimo mediante un 74LS165 se empaqueta una secuencia de 8 bits que se envian a la fpga para indicarle cual posicion actual tiene al led encendido.
-<img width="636" height="559" alt="Captura de pantalla 2026-08-12 113503" src="https://github.com/user-attachments/assets/40c7f6c1-4d64-4c0e-9d0e-f3c6ea0d0a36" />
+
+### Diagrma de primer nivel
+
+<img width="331" height="407" alt="primer nivel" src="https://github.com/user-attachments/assets/e017b016-3f27-4571-9e2a-62a85fd0aa8e" />
+
+### Diagrama de segundo nivel
+
+<img width="679" height="255" alt="Segundo Nivel" src="https://github.com/user-attachments/assets/bd83648c-c4b1-4ce7-84d0-532d8cad7221" />
+
+Bloques:
+
+Generador pseudoaleatorio
+
+Entrada: señal de reloj/solicitud.
+Salida: número pseudoaleatorio.
+Objetivo: producir la posición del topo.
+
+Visualización:
+
+Entrada: número generado.
+Salida: uno de ocho LEDs.
+Objetivo: mostrar físicamente la posición seleccionada.
+
+Transmisor serial:
+
+Entrada: número generado y señal de control.
+Salida: TX.
+Objetivo: transmitir la posición hacia la FPGA.
+
+### Diagrama de tercer nivel
+
+<img width="600" height="573" alt="Captura de pantalla 2026-08-27 191419" src="https://github.com/user-attachments/assets/93d5ed45-a546-4ad6-86e2-e9e2b5b00de6" />
+
+### Diagrama de cuarto nivel
+
+<img width="597" height="552" alt="Captura de pantalla 2026-08-27 192215" src="https://github.com/user-attachments/assets/68f7a8c5-880a-4ef6-b76b-0aa31f0fb90b" />
+
 
 ## Subsistema de Control
 
