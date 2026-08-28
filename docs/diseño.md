@@ -76,6 +76,18 @@ Objetivo: transmitir la posición hacia la FPGA.
 
 <img width="597" height="552" alt="Captura de pantalla 2026-08-27 192215" src="https://github.com/user-attachments/assets/68f7a8c5-880a-4ef6-b76b-0aa31f0fb90b" />
 
+Objetivo
+Generar una secuencia pseudoaleatoria de estados utilizando un registro de desplazamiento con retroalimentación lineal.
+
+Entradas
+CLK
+RESET/INICIALIZACIÓN
+eventualmente SOLICITUD
+Salidas
+Q3
+Q2
+Q1
+Q0
 
 ## Subsistema de Control
 
