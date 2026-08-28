@@ -45,11 +45,12 @@ Este sistema se encarga de seleccionas psudoaleatoriamente un led y lo enciende,
 
 ### Diagrma de primer nivel
 
-<img width="331" height="407" alt="primer nivel" src="https://github.com/user-attachments/assets/e017b016-3f27-4571-9e2a-62a85fd0aa8e" />
+
+<img width="679" height="255" alt="Segundo Nivel" src="https://github.com/user-attachments/assets/bd83648c-c4b1-4ce7-84d0-532d8cad7221" />
 
 ### Diagrama de segundo nivel
 
-<img width="679" height="255" alt="Segundo Nivel" src="https://github.com/user-attachments/assets/bd83648c-c4b1-4ce7-84d0-532d8cad7221" />
+<img width="600" height="573" alt="Captura de pantalla 2026-08-27 191419" src="https://github.com/user-attachments/assets/93d5ed45-a546-4ad6-86e2-e9e2b5b00de6" />
 
 Bloques:
 
@@ -72,10 +73,6 @@ Salida: TX.
 Objetivo: transmitir la posición hacia la FPGA.
 
 ### Diagrama de tercer nivel
-
-<img width="600" height="573" alt="Captura de pantalla 2026-08-27 191419" src="https://github.com/user-attachments/assets/93d5ed45-a546-4ad6-86e2-e9e2b5b00de6" />
-
-### Diagrama de cuarto nivel
 
 <img width="597" height="552" alt="Captura de pantalla 2026-08-27 192215" src="https://github.com/user-attachments/assets/68f7a8c5-880a-4ef6-b76b-0aa31f0fb90b" />
 
