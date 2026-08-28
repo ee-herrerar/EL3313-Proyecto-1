@@ -17,15 +17,25 @@ El proyecto consiste en desarrollar un sistema híbrido basado en una FPGA y un 
 Un circuito secuencial es aquel cuyo comportamiento depende de las entradas actuales y del estado almacenado previamente. En este proyecto, los flip-flops tipo D se utilizan como elementos de memoria para almacenar los bits del LFSR. Cada flip-flop actualiza su salida con base en el valor presente en su entrada D durante el flanco activo del reloj.
 
 #### Registro de desplazamiento con retroalimentación lineal
-Para la generación pseudoaleatoria de la posición del topo se utiliza un registro de desplazamiento con retroalimentación lineal (LFSR, Linear Feedback Shift Register) de cuatro bits. El registro está compuesto por cuatro flip-flops tipo D, cuyos estados se representan mediante Q3 Q2 Q1 Q0. La realimentación del registro se obtiene mediante una operación XOR entre determinados bits del estado actual. Para el LFSR de cuatro bits se utiliza el polinomio de retroalimentación: P(x)=x^4+x+1. Este polinomio define los taps utilizados para generar el nuevo bit de realimentación. En la implementación propuesta, los bits Q3 y Q0 se combinan mediante una compuerta XOR: D3 = Q3​⊕Q0​. 
-Los demás bits se desplazan dentro del registro:
-D2=Q3 
-D1=Q2 
-D0=Q1
-Los cuatro flip-flops reciben el mismo reloj, de manera que en cada flanco activo se actualiza simultáneamente el estado del registro. Una característica importante del LFSR es que el estado 0000 no debe utilizarse como estado inicial. Si el registro entra en dicho estado, la realimentación también produce cero. por lo que el circuito permanecería bloqueado. Para un LFSR de cuatro bits, el número máximo de estados diferentes de cero que puede recorrer es: 2^4-1=15 
-Por lo tanto, cuando se utiliza un polinomio de retroalimentación apropiado, el registro puede recorrer hasta 15 estados antes de repetir la secuencia.
-En el presente proyecto, el LFSR se utiliza como fuente pseudoaleatoria para generar la posición del topo. Debido a que el tablero posee ocho posiciones, los estados generados por el LFSR deberán posteriormente ser utilizados mediante una etapa de selección o mapeo que permita obtener las ocho combinaciones correspondientes a las posiciones:​
-Por ultimo, para una secuencia iniciada en 001 se esperaría 001 → 100 → 110 → 111 → 011 → 101 → 010 → 001.
+Para la generación pseudoaleatoria de la posición del topo se utiliza un registro de desplazamiento con retroalimentación lineal (LFSR, Linear Feedback Shift Register) de tres bits. El registro está compuesto por tres flip-flops tipo D, cuyos estados se representan mediante Q2, Q1 Q0.
+
+La realimentación se implementa mediante una compuerta XOR que combina los bits Q2 y Q0. Estos bits corresponden a los taps utilizados para generar el nuevo valor que ingresa al registro. Las ecuaciones de siguiente estado son:
+
+$$ D_2=Q_2\oplus Q_0 $$ $$ D_1=Q_2 $$ $$ D_0=Q_1 $$
+
+La red de realimentación utilizada puede representarse mediante el polinomio:
+
+$$ P(x)=x^3+x+1 $$
+
+Este polinomio describe los términos utilizados en la realimentación del LFSR y permite seleccionar una configuración que produzca una secuencia de longitud máxima para un registro de tres bits. Para un LFSR de \(n=3\) bits, el período máximo es:
+
+$$ 2^3-1=7 $$
+
+Por lo tanto, el circuito puede recorrer siete estados diferentes de cero antes de repetir la secuencia. Para una condición inicial de \(001\), la secuencia obtenida es:
+
+$$ 001\rightarrow100\rightarrow110\rightarrow111 \rightarrow011\rightarrow101\rightarrow010\rightarrow001 $$
+
+El estado \(000\) no debe utilizarse como condición inicial, debido a que la realimentación XOR produce nuevamente cero y el registro permanece indefinidamente en dicho estado. Por esta razón, durante la inicialización se debe garantizar que al menos uno de los tres flip-flops se encuentre en estado lógico 1.
 
 #### Decodificador 74LS138
 El 74LS138 permite convertir las tres señales binarias del LFSR en una de ocho salidas.
