@@ -13,10 +13,13 @@ Al momento de elaboración del informe, la generación y visualización del núm
 El proyecto consiste en desarrollar un sistema híbrido basado en una FPGA y un circuito implementado con lógica discreta. El objetivo es reproducir el funcionamiento básico de un juego Whack-a-mole, en el cual un topo aparece en una de ocho posiciones y el jugador debe presionar el botón correspondiente antes de que finalice el tiempo disponible. Una característica fundamental del proyecto es que la generación de la posición del topo no se realiza dentro de la FPGA. Esta función corresponde a un circuito montado en protoboard utilizando circuitos integrados de la familia 74xx. El circuito discreto determina pseudoaleatoriamente una posición, la representa mediante un LED y posteriormente transmite la posición a la FPGA mediante un enlace serial. Esta separación entre ambos sistemas forma parte fundamental del propósito del proyecto. La FPGA, por su parte, se encarga del control general del juego. Esta división permite trabajar simultáneamente con circuitos secuenciales y combinacionales implementados mediante lógica discreta y con diseño RTL sintetizable sobre una FPGA. Además, ambos subsistemas deben operar con referencias temporales independientes. Por lo tanto, el reloj utilizado por el circuito discreto no debe compartirse con la FPGA; la diferencia entre dominios temporales debe resolverse mediante la comunicación serial.
 
 ### Fundamentación teórica
-#### Circuitos secuenciales
+
+#### Circuito discreto
+
+##### Circuitos secuenciales
 Un circuito secuencial es aquel cuyo comportamiento depende de las entradas actuales y del estado almacenado previamente. En este proyecto, los flip-flops tipo D se utilizan como elementos de memoria para almacenar los bits del LFSR. Cada flip-flop actualiza su salida con base en el valor presente en su entrada D durante el flanco activo del reloj.
 
-#### Registro de desplazamiento con retroalimentación lineal
+##### Registro de desplazamiento con retroalimentación lineal
 Para la generación pseudoaleatoria de la posición del topo se utiliza un registro de desplazamiento con retroalimentación lineal (LFSR, Linear Feedback Shift Register) de tres bits. El registro está compuesto por tres flip-flops tipo D, cuyos estados se representan mediante Q2, Q1 Q0.
 
 La realimentación se implementa mediante una compuerta XOR que combina los bits Q2 y Q0. Estos bits corresponden a los taps utilizados para generar el nuevo valor que ingresa al registro. Las ecuaciones de siguiente estado son:
@@ -37,7 +40,7 @@ $$ 001\rightarrow100\rightarrow110\rightarrow111 \rightarrow011\rightarrow101\ri
 
 El estado \(000\) no debe utilizarse como condición inicial, debido a que la realimentación XOR produce nuevamente cero y el registro permanece indefinidamente en dicho estado. Por esta razón, durante la inicialización se debe garantizar que al menos uno de los tres flip-flops se encuentre en estado lógico 1.
 
-#### Decodificador 74LS138
+##### Decodificador 74LS138
 El 74LS138 permite convertir las tres señales binarias del LFSR en una de ocho salidas.
 
 <img width="665" height="374" alt="Captura de pantalla 2026-08-26 135259" src="https://github.com/user-attachments/assets/d0999dac-fa36-4a0f-b827-b86a099fbe61" />
