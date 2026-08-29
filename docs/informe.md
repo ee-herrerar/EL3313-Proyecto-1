@@ -189,7 +189,7 @@ Se realizaron mediciones experimentales para definir el porcentaje de error conj
 Cálculo del porcentaje de error de la UART de recepción:
 
 <div align="center">
-<img src="./ImagenesDocu/Reloj.png" width="800" height="600">
+<img src="./ImagenesDocu/Reloj.jpg" width="800" height="600">
 </div>
 
 $$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
@@ -207,7 +207,7 @@ Se puede observar que el valor del módulo de recepción es extremadamente mas b
 La implementación de esta sección genero problemas, ya que algunos elementos funcionaban por separado únicamente, y al conectar el conjunto la señal se distorsionaba haciendo imposible la medición y transmisión de datos. A continuación, se muestran algunas señales distorsionadas que se observaron mientras se buscaba el problema:  
 
 <div align="center">
-<img src="./ImagenesDocu/SimulacionError.png" width="800" height="600">
+<img src="./ImagenesDocu/SimulacionError.jpg" width="800" height="600">
 </div>
 
 ## Resultados
@@ -229,3 +229,7 @@ El módulo de transmisión de la UART no logro aplicarse exitosamente a pesar de
 ### Conclusión
 En este proyecto se llevó a cabo la implementación de un juego por medio de sistemas descritos en HDL y sintetizados en una FPGA, y sistemas de lógica discreta. Para los sistemas descritos en HDL se logró desarrollar una solución aplicando y reforzando conocimientos de cursos pasados sobre el diseño de máquinas de estado, lógica combinacional, FPGA y SystemVerilog, logrando llegar a una solución que lograse cumplir con los requerimientos del proyecto. Se logro implementar una maquina de estados que controlara la secuencia de el juego, el aumento progresivo de la dificultad, la implementación de botones externos y su sincronización, el uso de displays e incluso la simulación de la parte de lógica discreta.
 Para el sistema discreto, se logro diseñar un subsistema LFSR que genera posiciones de forma pseudoaleatoria, enciende los leds acorde a la misma y con la capacidad de transmitir los 8 bits de forma paralela al registro de desplazamiento. El subsistema de transmisión de la UART no se logró implementar físicamente a pesar de funcionar en la simulación, es posible la velocidad de envío de bits escogida para este módulo no fuese la ideal y que el diseño cargado de compuertas e integrados y la elección especifica de sus modelos dificultara la ubicación real del problema. En futuros diseños se optará por un diseño mas eficiente y menos propenso a errores en la medida de lo posible, también se realizara el proceso de búsqueda de errores de una forma más eficiente en cada módulo, además, se considerara detenidamente la elección de una velocidad de operación del circuito más apta. 
+
+
+[1] David Harris y Sarah Harris. Digital Design and Computer Architecture. RISC-V
+Edition. Morgan Kaufmann, 2022, pagina 564. ´ ISBN: 978-0-12-820064-3.
