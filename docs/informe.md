@@ -202,7 +202,7 @@ $$ Error_{UART RX} = 0.006\% $$
 Cálculo del porcentaje de error de la UART de transmisión:
 $$ Error_{UART TX} = \frac{9600 - 9130}{9600} \times 100$$
 
-$$ Error_{UART TX} = 4.9\% $$
+$$ \text{Error}_{\\text{UART TX}} = 4.9\\% $$
 
 Se puede observar que el valor del módulo de recepción es extremadamente mas bajo que el del módulo de transmisión, cuyo reloj es mucho menos preciso que el de la FPGA, esto permite que el porcentaje de error se mantenga apenas por debajo del porcentaje de error máximo recomendado de 5% [1], lo que facilitaría una lectura correcta de los datos sin que el receptor lea datos incorrectos.
 
