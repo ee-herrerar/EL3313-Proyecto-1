@@ -224,7 +224,7 @@ $$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
 Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
 
 $$ f_{UART} = 9600.61 $$
-$$ Error_{UART} = 0.006 /% $$
+$$ \text{Error}_{\\text{UART}} = 0.006\\% $$
 
 Para la generación de estados se considero el uso de un contador BCD que se encarga de controlar la generación de un bit de start, controlar las señales de LOAD del registro de desplazamiento 74LS165 y de controlar la salida del MUX, este control se generaría a partir de compuertas lógicas. En la siguiente tabla se muestra cada estado del contador, a partir del cual se obtuvo la lógica combinacional.
 
