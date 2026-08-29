@@ -215,7 +215,7 @@ $$ f = 38400Hz $$
 Ciclo de trabajo: 
 
 $$Duty cycle = 1 - \frac{R_b}{(R_a + 2 \cdot R_b)} \times 100$$
-$$Duty cycle = 60\% $$
+$$ \\text{Duty cycle} = 60\\% $$
 
 Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% []. El calculo de error del modulo receptor se presenta a continuación:
 
