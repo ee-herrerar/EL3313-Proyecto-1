@@ -43,7 +43,7 @@ Gestión de Vidas y Reinicio: Un acierto reinicia el contador de fallos consecut
 ## Circuito discreto
 Este sistema se encarga de seleccionas psudoaleatoriamente un led y lo enciende, funciona usando un registro de desplazamiento con retroalimentación lineal para generar un numero de tres bits cada vez que la fpga lo indique, este funciona con 3 flip flops en serie donde la entrada del primero es la salida de una compuerta xor cuyas entradas son las salidas de los otros flip flops, cada vez que la fpga envia la señal esta llega a la entrada de reloj para que los bits de salida que dan los fliop flops se desplazan generando asi un numero de tres bits. Una vez genrado el numero de tres bits, este pasa por el decodificador 74LS138 el cual dependiendo del numero binario generado anteriormente enciende una de las 8 posibles entradas, estas entradas se conectan a los 8 leds. Por ultimo mediante un 74LS165 se empaqueta una secuencia de 8 bits que se envian a la fpga para indicarle cual posicion actual tiene al led encendido.
 
-### Diagrma de primer nivel
+### Diagrama de primer nivel
 
 
 <img width="679" height="255" alt="Segundo Nivel" src="https://github.com/user-attachments/assets/bd83648c-c4b1-4ce7-84d0-532d8cad7221" />
@@ -180,25 +180,69 @@ El plan de pruebas simplemente demostrara el correcto funcionamiento tanto de ca
 ### UART: módulo de transmisión
 UART (Universal Asynchronous Receiver Transmitter) es un protocolo de comunicación asíncrono, capaz de transmitir información entre dos dispositivos que operan a distintas frecuencias. Este protocolo utiliza una tasa de baudios (baud rate) común entre transmisor y receptor, esto equivale a la cantidad de bits transmitidos por segundo, la elección de el baud rate puede afectar la velocidad, calidad y eficiencia de la comunicación, por lo que para este proyecto se contempla el uso de una tasa de baudios estándar baja. Para asegurar la comunicación entre dispositivos, la línea TX (de transmisión) se mantiene constantemente en 1, e indica el inicio de la transmisión bajando a 0, así mismo, tras finalizar la transmisión la línea vuelve a 1.
 
-El siguiente diagrama de circuito está compuesto por una señal de reloj generada con un oscilador astable con 555 y un divisor de frecuencia hecho con flip-flops tipo D, estos dos elementos se utilizarán para generar el baud rate al que se transmiten los datos. El registro de desplazamiento paralelo-serie 74LS165 se encarga de la transmisión de los 8 bits desde el decodificador a través de la línea de transmisión TX. La parte de control de secuencia se encarga de contar los bits desplazados en cada flanco del generador de baudios así como de generar y controlar las señales de “Load” en el registro de desplazamientos, el control se hace a través de un MUX 2 a 1, el cual decide entre las entradas según el numero en el que el contador se encuentre, se planea que la primera entrada se mantenga en alto y a partir de cierto numero pase a cero (tras ser activado el contador), activando así las señales de “start (0)” y “stop (1)”, las cuales se encargan de indicar al receptor el inicio y fin de la transmisión asincrónica. La segunda entrada se conecta al registro de desplazamiento y se activa después de el “start (0)” para iniciar la transmisión en serie de los bits, finalmente se regresa a la primera entrada manteniéndola en 1 o “stop”.
+### Estructura del Sistema 
+#### Diagrama de Primer nivel
+El diseño del módulo de transmisión de la UART consta de las entradas “señal de siguiente topo” y de los ocho bits del módulo que genera la posición de topo. Sus salidas son los ocho bits transmitidos de forma serial, junto con un bit de inicio y uno de parada que indiquen a la FPGA en inicio y fin de la transmisión.
 
-![Diagrama UART de transmision](./ImagenesDocu/UART-ModuloDeTransmision.png)
+<div align="center">
+<img src="./ImagenesDocu/DIAGRAMA NIVEL 1 UART_TX.png" width="500" height="300">
+</div>
 
+#### Diagrama de Segundo Nivel
+El sistema tiene un modulo que genera la tasa de transmisión de bits o baud rate, este generara una señal de reloj para todos los elementos síncronos del circuito. El generador de estados es el encargado de controlar el proceso de transmisión, tanto que es lo que se va a transmitir como el momento en que se hace, para esto se usara en conjunto con la lógica combinacional, el generador de estados es quien recibe la señal de “siguiente topo” y la utiliza para empezar a ejecutarse. Finalmente, el módulo de transmisión es el encargado de transmitir la trama serial de un bit de start, los ocho bitas de datos y el bit de stop, este modulo es el que recibe los ocho bits paralelos como entrada y genera su única salida.
 
-#### MUX
+<div align="center">
+<img src="./ImagenesDocu/DIAGRAMA NIVEL  2 UART_TX.png" width="400" height="200">
+</div>
 
-![ejemplo Mux](./ImagenesDocu/MUX-ejemplo.png)
+#### Diagrama de Tercer Nivel
+El siguiente diagrama de circuito está compuesto por una señal de reloj generada con un oscilador astable con 555 y un divisor de frecuencia hecho con un contador ascendente de cuatro bits, estos dos elementos se utilizarán para generar el baud rate al que se transmiten los datos. El registro de desplazamiento paralelo-serie 74LS165 se encarga de la transmisión de los 8 bits desde el decodificador a través de la línea de transmisión TX. La parte de control de secuencia se encarga de contar los bits desplazados en cada flanco del generador de baudios así como de generar y controlar las señales de “Load” en el registro de desplazamientos, el control se hace a través de un MUX 2 a 1, el cual decide entre las entradas según el numero en el que el contador se encuentre, se planea que la primera entrada se mantenga en alto y a partir de cierto numero pase a cero (tras ser activado el contador), activando así las señales de “start (0)” y “stop (1)”, las cuales se encargan de indicar al receptor el inicio y fin de la transmisión asincrónica. La segunda entrada se conecta al registro de desplazamiento y se activa después de el “start (0)” para iniciar la transmisión en serie de los bits, finalmente se regresa a la primera entrada manteniéndola en 1 o “stop”.
 
+<div align="center">
+<img src="./ImagenesDocu/UART-ModuloDeTransmision.png" width="400" height="600">
+</div>
 
-Para esta sección se considera el uso de un contador de 4 bits de 0 a 9. Por medio de lógica combinacional se planea que controle las salidas del MUX, el estado de la línea A (señal de “start” y “stop”) y el control del load para cargar los bits e iniciar el desplazamiento.
+#### Diagrama de Cuarto Nivel
+El modulo transmisor de UART recibe del decodificador ocho bits paralelos generados de forma pseudoaleatoria por el LFSR, el objetivo es transmitir esta información en una trama serial hasta la FPGA, de forma que pueda obtener la ubicación del topo, el módulo de UART de recepción se encarga de muestrear a partir del bit de inicio los datos enviados. 
+Respecto a su funcionamiento, este genera una señal mediante un oscilador astable con un NE555, cuya frecuencia de 38400Hz seria divida por un contador 74LS161 entre cuatro, para generar una frecuencia de 9600, estos dos elementos conforman el modulo del generador de baudios. En un principio se tomó la decisión de definir un baud rate de 9600 bps por ser el valor estándar y ser relativamente bajo en comparación con otros valores típicos, sin embargo, la aplicación de este proyecto no requiere una alta velocidad en la transferencia de datos. A continuación, se presentan los cálculos del baud rate del módulo transmisor, empezando por el cálculo de la frecuencia de oscilación del astable con 555.
 
-![ejemplo Mux](./ImagenesDocu/TablaSimplificadaDelMUX.png)
+$$ f = \frac{1.44}{(R_a + 2 \cdot R_b) \cdot C} $$
 
-![ejemplo Mux](./ImagenesDocu/TablaContador-MUX.png)
+Escogiendo valores de $$R_a = 750 \Omega$$, $$R_b = 1500 \Omega$$ y $$C = 10nF$$ se obtiene una frecuencia de:
 
-Los números del contador se usarán para la carga paralela de bits en el registro de desplazamiento e iniciar el desplazamiento, cambiar la línea A entre 1 y 0, elegir entre salidas del MUX y activar una señal de enable una vez finaliza la transmisión, deteniendo la cuenta. Para este primer planteamiento se toma en cuenta la posibilidad de generar una señal que desactiva el enable una vez inicia la transmisión. 
+$$ f = 38400Hz $$  
 
-![ejemplo Mux](./ImagenesDocu/TablaContador-load-TX.png)
+Ciclo de trabajo: 
+
+$$Duty cycle = 1 - \frac{R_b}{(R_a + 2 \cdot R_b)} \times 100$$
+$$Duty cycle = 60\% $$
+
+Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% []. El calculo de error del modulo receptor se presenta a continuación:
+
+$$ f_UART = \frac{f_fpga_clock}{(16 \times (BRG+1)} $$
+
+Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
+
+$$ f_UART = 9600.61 $$
+$$ Error_UART = 0.006 /% $$
+
+Para la generación de estados se considero el uso de un contador BCD que se encarga de controlar la generación de un bit de start, controlar las señales de LOAD del registro de desplazamiento 74LS165 y de controlar la salida del MUX, este control se generaría a partir de compuertas lógicas. En la siguiente tabla se muestra cada estado del contador, a partir del cual se obtuvo la lógica combinacional.
+
+En el caso de el load, este se mantiene en cero por dos estados esperando a que el bit de inicio aparezca tras el primer ciclo en la línea llamada “Idle” que corresponde a la primera entrada del MUX, por ende, el MUX también espera dos estados de reloj para poder pasar a la segunda entrada, a través de la que se desplaza la trama serial. El reset se activa automáticamente en 0 y sale de este estado a través de la señal externa proveniente de la FPGA, la cual solicita una nueva posición de topo.
+Los valores de la tabla se utilizaron para determinar las compuertas lógicas necesarias, sin embargo, el contador, el load y el reset son sincrónicos, por lo que tomando en cuenta los tiempos de propagación a través de cada compuerta y del contador, y comparándolo con el tiempo que el valor debe estar estable antes de ser actualizado en el siguiente flanco por el mismo contador y el shift register, se puede saber que los valores no se actualizara en el mismo flanco en que el valor cambia, si no, uno después. Los valores de “s” (el que elije la compuerta del MUX) y de “Idle”, a diferencia del resto, no son sincrónicos, por lo que para estos se opto por utilizar un flip-flop tipo D que actualice ambos datos de forma conjunta con el resto de datos. Para definir que compuertas se usarían se usó algebra booleana para algunos casos, a continuación, se muestran las operaciones definidas:
+
+$$ Idle = \overline{Q_B} \cdot \overline{Q_C} \cdot \overline{Q_A \oplus Q_D}$$
+
+$$ Load = Q_B + Q_C + Q_D$$
+
+$$ Reset =  Q_A + Q_B + Q_C + Q_D$$
+
+$$ S = Q_B + Q_C + Q_D $$
+
+El diagrama de chips y compuertas fue montado en multisim, el esquemático se muestra a continuación:
+
+#### Diagrama de Quinto Nivel
+
 
 ### Fuentes
 [1] 	TI Precision Labs – Microcontrollers “UART Protocol Overview”, sf. [online]: 
