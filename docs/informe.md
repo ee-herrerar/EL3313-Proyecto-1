@@ -213,6 +213,321 @@ La implementación de esta sección generó problemas, ya que algunos elementos 
 <img src="./ImagenesDocu/SimulacionError.jpg" width="800" height="600">
 </div>
 
+
+#### Pruebas en FPGA via Vivado
+Estructura adaptada para el módulo `Botones` siguiendo el formato de la documentación base (sin secciones de abreviaturas, referencias ni numeración):
+
+##### Módulo "Botones"
+
+El módulo *Botones* se encarga de procesar un vector de 8 entradas de botones previamente libre de rebotes (*debounced*), validar que únicamente exista una pulsación individual activa a la vez y codificar la posición del botón presionado en una salida de 3 bits.
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module Botones (
+    input logic        clk,
+    input logic        RESET,
+    input logic [7:0]  BotonesDebounced,
+    output logic       BotonValido,
+    output logic [2:0] TopoJugador
+);
+
+```
+
+**Parámetros**
+
+El módulo no posee parámetros.
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema.
+* `RESET`: Entrada de reset del módulo, activo en **alto**.
+* `BotonesDebounced`: Vector de entrada de 8 bits correspondiente al estado antirrebote de los botones (`BotonesDebounced[7:0]`).
+* `BotonValido`: Salida lógica. Se activa en `1` durante un pulso cuando se detecta una entrada de botón válida. Permanece en `0` si no hay botones presionados o si se detecta más de un botón presionado simultáneamente.
+* `TopoJugador`: Salida de 3 bits. Indica el índice codificado (del `0` al `7`) del botón activo detectado.
+
+**Criterios de diseño**
+
+* **Validación de entradas:** El sistema requiere que la entrada sea de tipo *one-hot* (únicamente un bit activo a la vez). Si se detectan dos o más pulsaciones simultáneas, la señal `BotonValido` se fuerza a `0`.
+* **Control de pulso:** Mantener una pulsación activa de forma continua no genera pulsos repetidos en `BotonValido`; únicamente se procesa la transición inicial.
+
+**Testbench**
+
+El testbench del módulo está implementado en `Botones_tb.sv`. En este entorno de prueba se instancia el módulo bajo prueba (DUT) alimentado por una señal de reloj de 100 MHz (`periodo = 10 ns`).
+
+La suite de pruebas es auto-verificable mediante aserciones condicionales que evalúan las salidas frente a las entradas aplicadas:
+
+* **Prueba de Reset:** Verifica que al aplicar `RESET = 1` la señal `BotonValido` sea `0` y `TopoJugador` se reinicie en `0`.
+* **Pruebas de codificación individual (Botones 0 al 7):** Se estimula de forma secuencial cada posición del vector `BotonesDebounced` comprobando que `BotonValido` se active y que `TopoJugador` refleje el índice binario correspondiente (`3'd0` a `3'd7`).
+* **Prueba de sostenimiento:** Confirma que al mantener presionado un botón en ciclos consecutivos de reloj, `BotonValido` retorna a `0`.
+* **Prueba de simultaneidad:** Aplica dos botones activos concurrentemente (ej. `8'b00000110`), validando la invalidación de la salida (`BotonValido = 0`).
+* **Prueba de re-pulsación:** Verifica la correcta respuesta tras liberar y presionar nuevamente un botón.
+
+Salida obtenida en la terminal luego de la simulación:
+
+```text
+PASS: RESET correcto
+PASS: Boton 0 detectado correctamente
+PASS: Mantener boton no genera otro pulso
+PASS: Boton 1 detectado correctamente
+PASS: Boton 2 detectado correctamente
+PASS: Boton 3 detectado correctamente
+PASS: Boton 4 detectado correctamente
+PASS: Boton 5 detectado correctamente
+PASS: Boton 6 detectado correctamente
+PASS: Boton 7 detectado correctamente
+PASS: Dos botones simultaneos son invalidos
+PASS: Nueva pulsacion se detecta correctamente
+--------------------------------
+FIN DE PRUEBAS DE BOTONES
+--------------------------------
+## Testbench "contadores_tb"
+
+El módulo *contadores_tb* es el entorno de pruebas diseñado para verificar el comportamiento del acumulador de puntuación del sistema. Se encarga de evaluar el incremento, reinicio autónomo y límites de saturación de los registros de aciertos y fallos.
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module contadores_tb;
+    // Entradas
+    logic clk;
+    logic RESET;
+    logic AciertosSube;
+    logic FallosSube;
+    logic ReiniciarFallosConsecutivos;
+    logic ReiniciarJuego;
+
+    // Salidas
+    logic [6:0] AciertosTotales;
+    logic [6:0] FallosTotales;
+    logic [1:0] FallosConsecutivos;
+
+```
+
+**Parámetros**
+
+El módulo no posee parámetros.
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (generada a 100 MHz).
+* `RESET`: Entrada de reset general.
+* `AciertosSube`: Entrada de control. Genera el incremento del contador de aciertos acumulados.
+* `FallosSube`: Entrada de control. Genera el incremento tanto del acumulador total de fallos como del contador de fallos consecutivos.
+* `ReiniciarFallosConsecutivos`: Entrada de control. Limpia a `0` la cuenta de fallos consecutivos sin alterar los totales.
+* `ReiniciarJuego`: Entrada de reset lógico. Restablece todos los contadores del sistema a su estado inicial.
+* `AciertosTotales`: Salida de 7 bits. Indica el total de aciertos acumulados.
+* `FallosTotales`: Salida de 7 bits. Indica el total de fallos acumulados.
+* `FallosConsecutivos`: Salida de 2 bits. Registra la racha actual de fallos consecutivos.
+
+**Criterios de diseño**
+
+* **Lógica de acumulación:** Los incrementos operan sincronizados al flanco de subida de `clk`. Un acierto exitoso reinicia de forma implícita la racha de `FallosConsecutivos`.
+* **Límites de saturación:** Para prevenir desbordamientos (*overflow*), los acumuladores de 7 bits (`AciertosTotales` y `FallosTotales`) cuentan con tope de saturación en `99` (`7'd99`), mientras que `FallosConsecutivos` (2 bits) se satura en `3` (`2'd3`).
+
+**Testbench**
+
+La suite implementada en `contadores_tb` es autoverificable y simula una secuencia paso a paso validando cada regla de negocio del sistema:
+
+* **Prueba de reset e inicialización:** Comprueba la puesta a cero general mediante `RESET`.
+* **Pruebas de incremento:** Valida de forma independiente el registro correcto de aciertos y fallos individuales.
+* **Pruebas de reinicio parcial y por acierto:** Evalúa la limpieza de la racha consecutiva por señal explícita (`ReiniciarFallosConsecutivos`) o al encadenar un acierto (`AciertosSube`).
+* **Prueba de reinicio global:** Verifica el comportamiento de `ReiniciarJuego`.
+* **Pruebas de saturación:** Mediante bucles `repeat`, fuerza el exceso de eventos para constatar la detención de los contadores en `3` y `99` respectivamente.
+
+Salida obtenida en la terminal tras finalizar la simulación:
+
+```text
+PASS: RESET reinicia todos los contadores
+PASS: AciertosTotales incrementa correctamente
+PASS: Fallo incrementa total y consecutivos
+PASS: Segundo fallo consecutivo correcto
+PASS: Reinicio de fallos consecutivos correcto
+PASS: Acierto reinicia fallos consecutivos
+PASS: ReiniciarJuego reinicia todos los contadores
+PASS: FallosConsecutivos se limita a 3
+PASS: AciertosTotales se limita a 99
+PASS: FallosTotales se limita a 99 y consecutivos a 3
+------------------------------------
+FIN DE LAS PRUEBAS DE CONTADORES
+------------------------------------
+```
+## Testbench "GameOverScreen_tb"
+
+El módulo *GameOverScreen_tb* es el entorno de pruebas diseñado para verificar el comportamiento del temporizador de la pantalla de fin de juego. Se encarga de evaluar la correcta contención del conteo, la acumulación por milisegundos y la generación de la señal de finalización.
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module GameOverScreen_tb;
+    logic clk;
+    logic RESET;
+    logic GameOverOut;
+
+    logic GameOverDone;
+
+```
+
+**Parámetros**
+
+* `TIEMPO_GAMEOVER_MS`: Define la duración objetivo en milisegundos antes de activar la señal de finalización. Para acelerar los tiempos de simulación, se configuró a `3` (3 ms) en la instancia del módulo bajo prueba (`DUT`).
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (generada a 100 MHz).
+* `RESET`: Entrada de reset general, activo en **alto**.
+* `GameOverOut`: Entrada de habilitación. Activa el temporizador de la pantalla de *Game Over* cuando está en `1`.
+* `GameOverDone`: Salida lógica. Se activa en `1` una vez transcurrido el tiempo establecido por el parámetro `TIEMPO_GAMEOVER_MS`.
+
+**Criterios de diseño**
+
+* **Habilitación condicional:** El temporizador únicamente incrementa sus contadores internos (`ContadorCiclos` y `ContadorMs`) cuando la señal `GameOverOut` se encuentra activa (`1`). En caso contrario, permanece inactivo.
+* **Acumulación de tiempo:** Genera un incremento en el contador de milisegundos cada 100,000 ciclos de reloj (correspondientes a 1 ms a una frecuencia de 100 MHz).
+* **Retención y reinicio:** Al alcanzar el tiempo límite, la señal `GameOverDone` se mantiene en `1` hasta que la habilitación `GameOverOut` pase a `0`, lo que reinicia inmediatamente todos los contadores internos a su estado inicial.
+
+**Testbench**
+
+La suite implementada en `GameOverScreen_tb` es autoverificable y simula la secuencia del temporizador validando cada estado de la prueba:
+
+* **Prueba de reset:** Verifica que al aplicar `RESET = 1`, tanto el contador interno de milisegundos como la señal `GameOverDone` se encuentren en `0`.
+* **Prueba de inactividad:** Confirma que el temporizador permanezca en `0` sin contar ciclos ni milisegundos mientras `GameOverOut = 0`.
+* **Pruebas de progresión temporal (1 ms, 2 ms y 3 ms):** Tras activar `GameOverOut = 1`, avanza 100,000 ciclos por etapa para comprobar el incremento preciso del registro de milisegundos.
+* **Prueba de activación de fin:** Valida que al alcanzar el tercer milisegundo, la salida `GameOverDone` pase a nivel alto (`1`).
+* **Prueba de retención:** Evalúa que `GameOverDone` permanezca activo en los ciclos de reloj posteriores a la finalización del conteo.
+* **Prueba de deshabilitación y reinicio:** Desactiva `GameOverOut` (`0`) comprobando el restablecimiento inmediato de contadores y salidas a `0`.
+
+Salida obtenida en la terminal tras finalizar la simulación:
+
+```text
+PASS: RESET correcto
+PASS: No cuenta fuera de GameOver
+PASS: Primer ms correcto
+PASS: Segundo ms correcto
+PASS: GameOverDone se activa correctamente
+PASS: GameOverDone permanece activo
+PASS: Salir de GameOver reinicia el modulo
+--------------------------------
+FIN DE PRUEBAS GAMEOVERSCREEN
+--------------------------------
+
+```
+## Testbench "Sync2Step_tb"
+
+El módulo *Sync2Step_tb* es el entorno de pruebas diseñado para verificar el funcionamiento del sincronizador de 2 etapas. Se encarga de evaluar la eliminación de metastabilidad al sincronizar una señal asíncrona de entrada con el dominio de reloj del sistema mediante la latencia esperada de dos flancos de subida.
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module Sync2Step_tb;
+    // Señales del testbench
+    logic clk;
+    logic reset;
+    logic async_signal;
+    logic sync_signal;
+
+```
+
+**Parámetros**
+
+El módulo no posee parámetros.
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (generada a 100 MHz).
+* `reset`: Entrada de reset general, activo en **alto**.
+* `async_signal`: Entrada lógica asíncrona que proviene de un dominio externo al reloj local.
+* `sync_signal`: Salida lógica sincronizada con el reloj del sistema.
+
+**Criterios de diseño**
+
+* **Cadena de sincronización:** El módulo implementa una arquitectura basada en una cadena de dos *flip-flops* tipo D en serie para mitigar problemas de metastabilidad.
+* **Latencia de respuesta:** Cualquier cambio de estado en `async_signal` requiere exactamente dos flancos de subida consecutivos de `clk` para propagarse a la salida `sync_signal`. La salida no debe cambiar de estado tras el primer ciclo.
+
+**Testbench**
+
+La suite implementada en `Sync2Step_tb` es autoverificable y comprueba la latencia de dos etapas del módulo frente a cambios de nivel lógico:
+
+* **Prueba de reset:** Mantiene `reset = 1` durante dos ciclos de reloj para verificar que la salida `sync_signal` se fuerza a `0`.
+* **Prueba de sincronización 0 -> 1:** Fuerza una transición asíncrona a nivel alto (`async_signal = 1`). Comprueba que en el primer flanco de reloj `sync_signal` se mantenga en `0` y que únicamente al segundo flanco pase a `1`.
+* **Prueba de sincronización 1 -> 0:** Fuerza una transición asíncrona a nivel bajo (`async_signal = 0`). Valida que la salida conserve el nivel `1` en el primer flanco y se actualice a `0` tras el segundo flanco de reloj.
+
+Salida obtenida en la terminal tras finalizar la simulación:
+
+```text
+PASS: Reset correcto
+PASS: Sincronizacion 0 -> 1 correcta
+PASS: Sincronizacion 1 -> 0 correcta
+---------------------------------------
+Pruebas de Sync2Step finalizadas
+---------------------------------------
+
+```
+
+## Testbench "Dificultad_tb"
+
+El módulo *Dificultad_tb* es el entorno de pruebas diseñado para verificar la lógica de escalamiento de dificultad del juego. Se encarga de evaluar el incremento progresivo del nivel, la reducción decreciente del tiempo límite en milisegundos, la saturación en el nivel máximo y la respuesta ante las señales de reinicio.
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module Dificultad_tb;
+    // Entradas
+    logic clk;
+    logic RESET;
+    logic ReajusteRelojOut;
+    logic ReiniciarJuego;
+
+    // Salidas
+    logic [3:0]  NivelDificultad;
+    logic [10:0] TiempoLimite;
+
+```
+
+**Parámetros**
+
+El módulo no posee parámetros.
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (generada a 100 MHz).
+* `RESET`: Entrada de reset general, activo en **alto**.
+* `ReajusteRelojOut`: Entrada de control. Indica un evento de reajuste que incrementa el nivel de dificultad.
+* `ReiniciarJuego`: Entrada de reset lógico. Restablece el nivel de dificultad y el tiempo límite a sus valores iniciales.
+* `NivelDificultad`: Salida de 4 bits. Indica el nivel de dificultad actual (rango de `0` a `10`).
+* `TiempoLimite`: Salida de 11 bits. Representa el tiempo límite permitido expresado en milisegundos.
+
+**Criterios de diseño**
+
+* **Relación Nivel vs. Tiempo:** En el nivel base (`0`), el `TiempoLimite` inicia en `1500 ms`. Cada pulso de `ReajusteRelojOut` incrementa en `1` el `NivelDificultad` y reduce el `TiempoLimite` a razón de `100 ms` por nivel.
+* **Saturación:** El nivel máximo de dificultad está limitado a `10` (`4'd10`), lo que corresponde a un `TiempoLimite` mínimo de `500 ms` (`11'd500`). Pulsos adicionales de `ReajusteRelojOut` tras alcanzar el tope son ignorados.
+* **Reinicio:** Las señales `RESET` y `ReiniciarJuego` fuerzan de forma inmediata el `NivelDificultad` a `0` y el `TiempoLimite` a `1500 ms`.
+
+**Testbench**
+
+La suite implementada en `Dificultad_tb` es autoverificable y valida la progresión y límites del módulo mediante la siguiente secuencia:
+
+* **Prueba de reset:** Verifica que al aplicar `RESET = 1`, `NivelDificultad` sea `0` y `TiempoLimite` sea `1500 ms`.
+* **Pruebas de progresión gradual (Niveles 1 y 2):** Aplica pulsos individuales en `ReajusteRelojOut` para corroborar el escalamiento paso a paso (`Nivel 1 -> 1400 ms`, `Nivel 2 -> 1300 ms`).
+* **Prueba de nivel máximo:** Emplea un bucle `repeat` para avanzar hasta el `Nivel 10`, verificando que el `TiempoLimite` sea de `500 ms`.
+* **Prueba de saturación:** Aplica pulsos adicionales en el nivel máximo para garantizar que el sistema no supere el `Nivel 10` ni reduzca el tiempo por debajo de `500 ms`.
+* **Prueba de reinicio de juego:** Activa `ReiniciarJuego` confirmando el restablecimiento a los valores iniciales de nivel `0` y `1500 ms`.
+
+Salida obtenida en la terminal tras finalizar la simulación:
+
+```text
+PASS: RESET coloca dificultad en nivel 0 y 1500 ms
+PASS: Nivel 1 corresponde a 1400 ms
+PASS: Nivel 2 corresponde a 1300 ms
+PASS: Nivel 10 corresponde a 500 ms
+PASS: NivelDificultad se limita a 10
+PASS: ReiniciarJuego vuelve a nivel 0 y 1500 ms
+------------------------------------
+FIN DE LAS PRUEBAS DE DIFICULTAD
+------------------------------------
+
+```
+
+
 ## Resultados
 #### Subsistema de Control
 - Se logra crear la maquina de estados correspondiente a la lógica necesaria de juego.
