@@ -174,7 +174,7 @@ El diseño general con integrados se muestra a continuación:
 </div>
 
 #### Simulaciones 
-En las simulaciones realizadas en multisim, se logro generar la señal de transmisión de forma correcta proando con distintos valores. en la siguiente imagen se muestra una señal transmisión con la siguiente secuencia:
+En las simulaciones realizadas en multisim, se logro generar la señal de transmisión de forma correcta probando con distintos valores. en la siguiente imagen se muestra una señal transmisión con la siguiente secuencia:
 
 | Bit / Campo | Start | A (LSB) | B | C | D | E | F | G | H (MSB) | Stop |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -186,11 +186,12 @@ En las simulaciones realizadas en multisim, se logro generar la señal de transm
 
 #### Mediciones 
 Se realizaron mediciones experimentales para definir el porcentaje de error conjunto de los módulos UART. El reloj de frecuencia de la FPGA es los suficientemente preciso para dejar la mayor parte del margen de error a la parte de transmisión, que al estar formada por elementos menos precisos se alejaba más de los valores ideales. En la siguiente imagen se muestra el resultado del divisor de baud rate:
-Cálculo del porcentaje de error de la UART de recepción:
 
 <div align="center">
 <img src="./ImagenesDocu/Reloj.jpg" width="800" height="600">
 </div>
+
+Cálculo del porcentaje de error de la UART de recepción:
 
 $$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
 
@@ -204,9 +205,9 @@ Cálculo del porcentaje de error de la UART de transmisión:
 $$ Error_{UART TX} = \frac{9600 - 9130}{9600} \times 100$$
 $$ \text{Error}_{\\text{UART TX}} = 4.9\\% $$
 
-Se puede observar que el valor del módulo de recepción es extremadamente mas bajo que el del módulo de transmisión, cuyo reloj es mucho menos preciso que el de la FPGA, esto permite que el porcentaje de error se mantenga apenas por debajo del porcentaje de error máximo recomendado de 5% [1], lo que facilitaría una lectura correcta de los datos sin que el receptor lea datos incorrectos.
+Se puede observar que el valor del módulo de recepción es extremadamente mas bajo que el del módulo de transmisión, cuyo reloj es mucho menos preciso que el de la FPGA, esto permite que el porcentaje de error se mantenga apenas por debajo del porcentaje de error máximo recomendado de 5% [1], lo que permitiría una lectura correcta de los datos sin que el receptor lea datos incorrectos.
 
-La implementación de esta sección genero problemas, ya que algunos elementos funcionaban por separado únicamente, y al conectar el conjunto la señal se distorsionaba haciendo imposible la medición y transmisión de datos. A continuación, se muestran algunas señales distorsionadas que se observaron mientras se buscaba el problema:  
+La implementación de esta sección generó problemas, ya que algunos elementos funcionaban por separado únicamente, y al conectar el circuito completo la señal se distorsionaba haciendo imposible la medición y transmisión de datos. A continuación, se muestran algunas señales distorsionadas que se observaron mientras se buscaba el problema:  
 
 <div align="center">
 <img src="./ImagenesDocu/SimulacionError.jpg" width="800" height="600">
@@ -229,8 +230,8 @@ El módulo de transmisión de la UART no logro aplicarse exitosamente a pesar de
 - Tras ajustes de lógica y baud rate se logró mejorar la calidad de la señal, sin embargo, no se logró la transmisión de datos.
 
 ### Conclusión
-En este proyecto se llevó a cabo la implementación de un juego por medio de sistemas descritos en HDL y sintetizados en una FPGA, y sistemas de lógica discreta. Para los sistemas descritos en HDL se logró desarrollar una solución aplicando y reforzando conocimientos de cursos pasados sobre el diseño de máquinas de estado, lógica combinacional, FPGA y SystemVerilog, logrando llegar a una solución que lograse cumplir con los requerimientos del proyecto. Se logro implementar una maquina de estados que controlara la secuencia de el juego, el aumento progresivo de la dificultad, la implementación de botones externos y su sincronización, el uso de displays e incluso la simulación de la parte de lógica discreta.
-Para el sistema discreto, se logro diseñar un subsistema LFSR que genera posiciones de forma pseudoaleatoria, enciende los leds acorde a la misma y con la capacidad de transmitir los 8 bits de forma paralela al registro de desplazamiento. El subsistema de transmisión de la UART no se logró implementar físicamente a pesar de funcionar en la simulación, es posible la velocidad de envío de bits escogida para este módulo no fuese la ideal y que el diseño cargado de compuertas e integrados y la elección especifica de sus modelos dificultara la ubicación real del problema. En futuros diseños se optará por un diseño mas eficiente y menos propenso a errores en la medida de lo posible, también se realizara el proceso de búsqueda de errores de una forma más eficiente en cada módulo, además, se considerara detenidamente la elección de una velocidad de operación del circuito más apta. 
+En este proyecto se llevó a cabo la implementación de un juego por medio de sistemas descritos en HDL y sintetizados en una FPGA, y sistemas de lógica discreta. Para los sistemas descritos en HDL se logró desarrollar una solución aplicando y reforzando conocimientos de cursos pasados sobre el diseño de máquinas de estado, lógica combinacional, FPGA y SystemVerilog, logrando llegar a una solución que cumpliera con los requerimientos del proyecto. Se logro implementar una maquina de estados que controlara la secuencia de el juego, el aumento progresivo de la dificultad, la implementación de botones externos y su sincronización, el uso de displays e incluso la simulación de la parte de lógica discreta.
+Para el sistema discreto, se logro diseñar un subsistema LFSR que genera posiciones de forma pseudoaleatoria, enciende los leds acorde a la misma y con la capacidad de transmitir los 8 bits de forma paralela al registro de desplazamiento. El subsistema de transmisión de la UART no se logró implementar físicamente a pesar de funcionar en la simulación, es posible que la velocidad de envío de bits escogida para este módulo no fuese la ideal y que el diseño cargado de compuertas e integrados y la elección especifica de sus modelos dificultara la ubicación real del problema. En futuros diseños se optará por un diseño mas eficiente y menos propenso a errores en la medida de lo posible, también se realizara el proceso de búsqueda de errores de una forma más eficiente en cada módulo, además, se considerara detenidamente la elección de una velocidad de operación del circuito más apta. 
 
 ### Fuentes
 [1]   David Harris y Sarah Harris. Digital Design and Computer Architecture. RISC-V
@@ -239,6 +240,7 @@ Para el sistema discreto, se logro diseñar un subsistema LFSR que genera posici
 [2] 	TI Precision Labs – Microcontrollers “UART Protocol Overview”, sf. [online]: 
       https://www.ti.com/content/dam/videos/external-videos/zh-tw/9/3816841626001/6313217959112.mp4/subassets/uart_protocol_overview_and_error_sources_0.pdf
 
-[3] 	R. Xie, "Design and Simulation of UART Protocol Based on FPGA," 2024 6th International Conference on Applied Machine Learning (ICAML), Dalian, China, 2024,        pp. 551-557, doi:   10.1109/ICAML64299.2024.00103.
+[3] 	R. Xie, "Design and Simulation of UART Protocol Based on FPGA," 2024 6th International Conference on Applied Machine Learning (ICAML), Dalian, China, 2024,        pp. 551-557, 
+      doi:   10.1109/ICAML64299.2024.00103.
 
-[4] 	W. Huang and G. Sheng, "Analysis and Research on UART Communication Protocol," 2024 4th Asia-Pacific Conference on Communications Technology and Computer          Science (ACCTCS), Shenyang, China, 2024, pp. 768-771, doi: 10.1109/ACCTCS61748.2024.00140. 
+[4] 	W. Huang and G. Sheng, "Analysis and Research on UART Communication Protocol," 2024 4th Asia-Pacific Conference on Communications Technology and Computer          Science (ACCTCS), Shenyang, China, 2024,         pp. 768-771, doi: 10.1109/ACCTCS61748.2024.00140. 
