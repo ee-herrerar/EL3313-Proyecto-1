@@ -146,9 +146,33 @@ Optimized tool selectionVoy a revisar los archivos principales del proyecto para
 #### Diseño 
 El sistema de transmisión de la UART se compone de un bloque generador de baud rate, un bloque contador generador de estados y de lógica combinacional, un registro de desplazamiento y un MUX que selecciona la salida. El bloque generador de baud rate está compuesto por un oscilador astable con NE555 que oscila a una frecuencia de 38.4kHz, esta frecuencia es dividida por un contador 74LS161 entre cuatro para obtener un baud rate de 9600bps, este valor fue escogido por ser un valor estándar usado comúnmente y por ser relativamente bajo en comparación con otros valores comunes. El bloque generador de estados y de lógica combinacional se compone por un contador BCD 74LS162 el cual controla distintos elementos según el numero en que se encuentre por medio de compuertas NOR, OR, XNOR y AND. Los elementos controlados por el contador y las expresiones de las compuertas se muestran a continuación:
 
+<div align="center">
+<img src="./ImagenesDocu/TablaCompuertas.png" width="400" height="600">
+</div>
+
+$$ Idle =\neg{Q_B} \cdot \neg{Q_C} \cdot \neg(Q_A \oplus Q_D) $$
+
+$$ Load = Q_B + Q_C + Q_D$$
+
+$$ Reset =  Q_A + Q_B + Q_C + Q_D$$
+
+$$ S = Q_B + Q_C + Q_D $$
+
+
 Tal como se explica en el documento de diseño el contador se pone así mismo en reset al llegar a 0, en este estado la línea de “Idle” se mantiene en 1 en la primera entrada del MUX 2:1, por esta razón “S” (selección de línea del MUX) también mantiene esta línea escogida durante el “estado 0”, el “Load” del Shift register se mantiene en 0, esperando para guardar los datos que provienen de LFSR. Al recibir la señal de “siguiente topo” a través de una OR, el contador BCD sale del reset y al llegar el siguiente flanco la línea de “Idle” se convierte en 0 para generar el bit de inicio, pero antes tanto el “Idle” como “S” pasan por un flip-flop tipo D para sincronizarse, al igual que el “Load” y reset, por los tiempos de propagación de las compuertas y el tiempo de estabilidad requerido para que el valor sea actualizado en el flanco por el contador y registro de desplazamiento.    
 
 El diseño general con compuertas se muestra a continuación:
+
+<div align="center">
+<img src="./ImagenesDocu/Circuito compuertas.png" width="400" height="600">
+</div>
+
+El diseño general con integrados se muestra a continuación:
+
+<div align="center">
+<img src="./ImagenesDocu/Circuito integrados.png" width="400" height="600">
+</div>
+
 #### Simulaciones 
 En las simulaciones realizadas en multisim, se logro generar la señal de transmisión de forma correcta proando con distintos valores. en la siguiente imagen se muestra una señal transmisión con la siguiente secuencia:
 
@@ -156,13 +180,35 @@ En las simulaciones realizadas en multisim, se logro generar la señal de transm
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Valor** | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 |
 
+<div align="center">
+<img src="./ImagenesDocu/SimulacionTX.png" width="800" height="600">
+</div>
+
 #### Mediciones 
 Se realizaron mediciones experimentales para definir el porcentaje de error conjunto de los módulos UART. El reloj de frecuencia de la FPGA es los suficientemente preciso para dejar la mayor parte del margen de error a la parte de transmisión, que al estar formada por elementos menos precisos se alejaba más de los valores ideales. En la siguiente imagen se muestra el resultado del divisor de baud rate:
 Cálculo del porcentaje de error de la UART de recepción:
+
+<div align="center">
+<img src="./ImagenesDocu/Reloj.png" width="800" height="600">
+</div>
+
+$$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
+
+Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
+
+$$ f_{UART} = 9600.61 $$
+$$ Error_{UART} = 0.006 /% $$
+
 Cálculo del porcentaje de error de la UART de transmisión:
+$$ f_{UART}) = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
+
 Se puede observar que el valor del módulo de recepción es extremadamente mas bajo que el del módulo de transmisión, cuyo reloj es mucho menos preciso que el de la FPGA, esto permite que el porcentaje de error se mantenga apenas por debajo del porcentaje de error máximo recomendado de 5% [], lo que facilitaría una lectura correcta de los datos sin que el receptor lea datos incorrectos.
 
 La implementación de esta sección genero problemas, ya que algunos elementos funcionaban por separado únicamente, y al conectar el conjunto la señal se distorsionaba haciendo imposible la medición y transmisión de datos. A continuación, se muestran algunas señales distorsionadas que se observaron mientras se buscaba el problema:  
+
+<div align="center">
+<img src="./ImagenesDocu/SimulacionError.png" width="800" height="600">
+</div>
 
 ## Resultados
 #### Subsistema de Control
