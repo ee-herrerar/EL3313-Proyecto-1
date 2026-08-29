@@ -192,7 +192,7 @@ El diseño del módulo de transmisión de la UART consta de las entradas “señ
 El sistema tiene un modulo que genera la tasa de transmisión de bits o baud rate, este generara una señal de reloj para todos los elementos síncronos del circuito. El generador de estados es el encargado de controlar el proceso de transmisión, tanto que es lo que se va a transmitir como el momento en que se hace, para esto se usara en conjunto con la lógica combinacional, el generador de estados es quien recibe la señal de “siguiente topo” y la utiliza para empezar a ejecutarse. Finalmente, el módulo de transmisión es el encargado de transmitir la trama serial de un bit de start, los ocho bitas de datos y el bit de stop, este modulo es el que recibe los ocho bits paralelos como entrada y genera su única salida.
 
 <div align="center">
-<img src="./ImagenesDocu/DIAGRAMA NIVEL 2 UART_TX.png" width="400" height="200">
+<img src="./ImagenesDocu/DIAGRAMA NIVEL  2 UART_TX.png" width="400" height="200">
 </div>
 
 #### Diagrama de Tercer Nivel
@@ -206,7 +206,7 @@ El siguiente diagrama de circuito está compuesto por una señal de reloj genera
 El modulo transmisor de UART recibe del decodificador ocho bits paralelos generados de forma pseudoaleatoria por el LFSR, el objetivo es transmitir esta información en una trama serial hasta la FPGA, de forma que pueda obtener la ubicación del topo, el módulo de UART de recepción se encarga de muestrear a partir del bit de inicio los datos enviados. 
 Respecto a su funcionamiento, este genera una señal mediante un oscilador astable con un NE555, cuya frecuencia de 38400Hz seria divida por un contador 74LS161 entre cuatro, para generar una frecuencia de 9600, estos dos elementos conforman el modulo del generador de baudios. En un principio se tomó la decisión de definir un baud rate de 9600 bps por ser el valor estándar y ser relativamente bajo en comparación con otros valores típicos, sin embargo, la aplicación de este proyecto no requiere una alta velocidad en la transferencia de datos. A continuación, se presentan los cálculos del baud rate del módulo transmisor, empezando por el cálculo de la frecuencia de oscilación del astable con 555.
 
-$$ f = \frac{1.44}{(R_a + 2 \cdot R_b)\cdotC} $$
+$$ f = \frac{1.44}{(R_a + 2 \cdot R_b) \cdot C} $$
 
 Escogiendo valores de $$R_a = 750 \Omega$$, $$R_b = 1500 \Omega$$ y $$C = 10nF$$ se obtiene una frecuencia de:
 
@@ -216,6 +216,31 @@ Ciclo de trabajo:
 
 $$Duty cycle = 1 - \frac{R_b}{(R_a + 2 \cdot R_b)} \times 100$$
 $$Duty cycle = 60\% $$
+
+Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% []. El calculo de error del modulo receptor se presenta a continuación:
+
+$$ f_UART = \frac{f_fpga_clock}{(16 \times (BRG+1)} $$
+
+Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
+
+$$ f_UART = 9600.61 $$
+$$ Error_UART = 0.006 /% $$
+
+Para la generación de estados se considero el uso de un contador BCD que se encarga de controlar la generación de un bit de start, controlar las señales de LOAD del registro de desplazamiento 74LS165 y de controlar la salida del MUX, este control se generaría a partir de compuertas lógicas. En la siguiente tabla se muestra cada estado del contador, a partir del cual se obtuvo la lógica combinacional.
+
+En el caso de el load, este se mantiene en cero por dos estados esperando a que el bit de inicio aparezca tras el primer ciclo en la línea llamada “Idle” que corresponde a la primera entrada del MUX, por ende, el MUX también espera dos estados de reloj para poder pasar a la segunda entrada, a través de la que se desplaza la trama serial. El reset se activa automáticamente en 0 y sale de este estado a través de la señal externa proveniente de la FPGA, la cual solicita una nueva posición de topo.
+Los valores de la tabla se utilizaron para determinar las compuertas lógicas necesarias, sin embargo, el contador, el load y el reset son sincrónicos, por lo que tomando en cuenta los tiempos de propagación a través de cada compuerta y del contador, y comparándolo con el tiempo que el valor debe estar estable antes de ser actualizado en el siguiente flanco por el mismo contador y el shift register, se puede saber que los valores no se actualizara en el mismo flanco en que el valor cambia, si no, uno después. Los valores de “s” (el que elije la compuerta del MUX) y de “Idle”, a diferencia del resto, no son sincrónicos, por lo que para estos se opto por utilizar un flip-flop tipo D que actualice ambos datos de forma conjunta con el resto de datos. Para definir que compuertas se usarían se usó algebra booleana para algunos casos, a continuación, se muestran las operaciones definidas:
+
+$$ Idle = \overline{Q_B} \cdot \overline{Q_C} \cdot \overline{Q_A \oplus Q_D}$$
+
+$$ Load = Q_B + Q_C + Q_D$$
+
+$$ Reset =  Q_A + Q_B + Q_C + Q_D$$
+
+$$ S = Q_B + Q_C + Q_D $$
+
+El diagrama de chips y compuertas fue montado en multisim, el esquemático se muestra a continuación:
+
 #### Diagrama de Quinto Nivel
 
 
