@@ -184,20 +184,38 @@ UART (Universal Asynchronous Receiver Transmitter) es un protocolo de comunicaci
 #### Diagrama de Primer nivel
 El diseño del módulo de transmisión de la UART consta de las entradas “señal de siguiente topo” y de los ocho bits del módulo que genera la posición de topo. Sus salidas son los ocho bits transmitidos de forma serial, junto con un bit de inicio y uno de parada que indiquen a la FPGA en inicio y fin de la transmisión.
 
-<img src="./ImagenesDocu/DIAGRAMA NIVEL 1 UART_TX.png" width="400" height="200">
+<div align="center">
+<img src="./ImagenesDocu/DIAGRAMA NIVEL 1 UART_TX.png" width="500" height="300">
+</div>
 
 #### Diagrama de Segundo Nivel
 El sistema tiene un modulo que genera la tasa de transmisión de bits o baud rate, este generara una señal de reloj para todos los elementos síncronos del circuito. El generador de estados es el encargado de controlar el proceso de transmisión, tanto que es lo que se va a transmitir como el momento en que se hace, para esto se usara en conjunto con la lógica combinacional, el generador de estados es quien recibe la señal de “siguiente topo” y la utiliza para empezar a ejecutarse. Finalmente, el módulo de transmisión es el encargado de transmitir la trama serial de un bit de start, los ocho bitas de datos y el bit de stop, este modulo es el que recibe los ocho bits paralelos como entrada y genera su única salida.
 
+<div align="center">
 <img src="./ImagenesDocu/DIAGRAMA NIVEL 2 UART_TX.png" width="400" height="200">
+</div>
 
 #### Diagrama de Tercer Nivel
 El siguiente diagrama de circuito está compuesto por una señal de reloj generada con un oscilador astable con 555 y un divisor de frecuencia hecho con un contador ascendente de cuatro bits, estos dos elementos se utilizarán para generar el baud rate al que se transmiten los datos. El registro de desplazamiento paralelo-serie 74LS165 se encarga de la transmisión de los 8 bits desde el decodificador a través de la línea de transmisión TX. La parte de control de secuencia se encarga de contar los bits desplazados en cada flanco del generador de baudios así como de generar y controlar las señales de “Load” en el registro de desplazamientos, el control se hace a través de un MUX 2 a 1, el cual decide entre las entradas según el numero en el que el contador se encuentre, se planea que la primera entrada se mantenga en alto y a partir de cierto numero pase a cero (tras ser activado el contador), activando así las señales de “start (0)” y “stop (1)”, las cuales se encargan de indicar al receptor el inicio y fin de la transmisión asincrónica. La segunda entrada se conecta al registro de desplazamiento y se activa después de el “start (0)” para iniciar la transmisión en serie de los bits, finalmente se regresa a la primera entrada manteniéndola en 1 o “stop”.
 
-<img src="./ImagenesDocu/UART-ModuloDeTransmision.png" width="400" height="200">
+<div align="center">
+<img src="./ImagenesDocu/UART-ModuloDeTransmision.png" width="400" height="600">
+</div>
 
 #### Diagrama de Cuarto Nivel
+El modulo transmisor de UART recibe del decodificador ocho bits paralelos generados de forma pseudoaleatoria por el LFSR, el objetivo es transmitir esta información en una trama serial hasta la FPGA, de forma que pueda obtener la ubicación del topo, el módulo de UART de recepción se encarga de muestrear a partir del bit de inicio los datos enviados. 
+Respecto a su funcionamiento, este genera una señal mediante un oscilador astable con un NE555, cuya frecuencia de 38400Hz seria divida por un contador 74LS161 entre cuatro, para generar una frecuencia de 9600, estos dos elementos conforman el modulo del generador de baudios. En un principio se tomó la decisión de definir un baud rate de 9600 bps por ser el valor estándar y ser relativamente bajo en comparación con otros valores típicos, sin embargo, la aplicación de este proyecto no requiere una alta velocidad en la transferencia de datos. A continuación, se presentan los cálculos del baud rate del módulo transmisor, empezando por el cálculo de la frecuencia de oscilación del astable con 555.
 
+$$ f = \frac{1.44}{(R_a + 2\cdotR_b)\cdotC} $$
+
+Escogiendo valores de $$R_a = 750 \Omega$$, $$R_b = 1500 \Omega$$ y $$C = 10nF$$ se obtiene una frecuencia de:
+
+$$ f = 38400Hz $$  
+
+Ciclo de trabajo: 
+
+$$Duty cycle = 1 - \frac{R_b}{(R_a + 2\cdotR_b)} \times 100$$
+$$Duty cycle = 60% $$
 #### Diagrama de Quinto Nivel
 
 
