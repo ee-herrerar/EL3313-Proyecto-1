@@ -235,7 +235,7 @@ Para la generación de estados se considero el uso de un contador BCD que se enc
 En el caso de el load, este se mantiene en cero por dos estados esperando a que el bit de inicio aparezca tras el primer ciclo en la línea llamada “Idle” que corresponde a la primera entrada del MUX, por ende, el MUX también espera dos estados de reloj para poder pasar a la segunda entrada, a través de la que se desplaza la trama serial. El reset se activa automáticamente en 0 y sale de este estado a través de la señal externa proveniente de la FPGA, la cual solicita una nueva posición de topo.
 Los valores de la tabla se utilizaron para determinar las compuertas lógicas necesarias, sin embargo, el contador, el load y el reset son sincrónicos, por lo que tomando en cuenta los tiempos de propagación a través de cada compuerta y del contador, y comparándolo con el tiempo que el valor debe estar estable antes de ser actualizado en el siguiente flanco por el mismo contador y el shift register, se puede saber que los valores no se actualizara en el mismo flanco en que el valor cambia, si no, uno después. Los valores de “s” (el que elije la compuerta del MUX) y de “Idle”, a diferencia del resto, no son sincrónicos, por lo que para estos se opto por utilizar un flip-flop tipo D que actualice ambos datos de forma conjunta con el resto de datos. Para definir que compuertas se usarían se usó algebra booleana para algunos casos, a continuación, se muestran las operaciones definidas:
 
-$$ Idle = \overline{Q_B} \cdot \overline{Q_C} \cdot \overline{(Q_A \oplus Q_D)}$$$
+$$ Idle =\neg{Q_B} \cdot \neg{Q_C} \cdot \neg(Q_A \oplus Q_D)$$
 
 $$ Load = Q_B + Q_C + Q_D$$
 
