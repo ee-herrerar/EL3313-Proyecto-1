@@ -281,6 +281,8 @@ PASS: Nueva pulsacion se detecta correctamente
 --------------------------------
 FIN DE PRUEBAS DE BOTONES
 --------------------------------
+```
+
 ## Testbench "contadores_tb"
 
 El módulo *contadores_tb* es el entorno de pruebas diseñado para verificar el comportamiento del acumulador de puntuación del sistema. Se encarga de evaluar el incremento, reinicio autónomo y límites de saturación de los registros de aciertos y fallos.
