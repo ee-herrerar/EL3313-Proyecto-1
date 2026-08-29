@@ -219,7 +219,7 @@ $$Duty cycle = 60\% $$
 
 Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% []. El calculo de error del modulo receptor se presenta a continuación:
 
-$$ f_{UART} = \frac{f_{fpga_clock}}{(16 \times (BRG+1)} $$
+$$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
 
 Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
 
@@ -247,11 +247,11 @@ $$ S = Q_B + Q_C + Q_D $$
 Diagramas del circuito con con compuertas e integrados:
 
 <div align="center">
-<img src="./ImagenesDocu/Circuito compuertas.png" width="700" height="900">
+<img src="./ImagenesDocu/Circuito compuertas.png" width="900" height="1100">
 </div>
 
 <div align="center">
-<img src="./ImagenesDocu/Circuito integrados.png" width="700" height="900">
+<img src="./ImagenesDocu/Circuito integrados.png" width="900" height="1100">
 </div>
 
 ### Fuentes
