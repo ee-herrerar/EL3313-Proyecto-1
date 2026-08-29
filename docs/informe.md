@@ -164,13 +164,13 @@ Tal como se explica en el documento de diseño el contador se pone así mismo en
 El diseño general con compuertas se muestra a continuación:
 
 <div align="center">
-<img src="./ImagenesDocu/Circuito compuertas.png" width="400" height="600">
+<img src="./ImagenesDocu/Circuito compuertas.png" width="900" height="1100">
 </div>
 
 El diseño general con integrados se muestra a continuación:
 
 <div align="center">
-<img src="./ImagenesDocu/Circuito integrados.png" width="400" height="600">
+<img src="./ImagenesDocu/Circuito integrados.png" width="900" height="1100">
 </div>
 
 #### Simulaciones 
@@ -197,7 +197,7 @@ $$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
 Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
 
 $$ f_{UART} = 9600.61 $$
-$$ Error_{UART} = 0.006 /% $$
+$$ Error_{UART} = 0.006 \% $$
 
 Cálculo del porcentaje de error de la UART de transmisión:
 $$ f_{UART}) = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
