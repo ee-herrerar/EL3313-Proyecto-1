@@ -5,14 +5,14 @@ Proyecto: Whack-a-mole: juego híbrido FPGA / lógica discreta
 Plataforma FPGA: Digilent Basys 3
 Tecnología discreta: Familia 74xx, protoboard
 
-### Resumen
+## Resumen
 El presente informe documenta el diseño y desarrollo de un sistema digital híbrido para implementar un juego tipo Whack-a-mole, combinando lógica digital discreta y una FPGA Basys 3. El circuito discreto tiene como función generar pseudoaleatoriamente la posición de uno de ocho posibles “topos”, visualizar dicha posición mediante un LED y transmitir la información correspondiente hacia la FPGA mediante un enlace serial. La FPGA concentra la lógica principal del juego. En ella se implementa una máquina de estados finitos encargada de solicitar nuevas posiciones, recibir y almacenar la posición generada por el circuito discreto, controlar el tiempo disponible para cada topo, registrar aciertos y fallos, modificar progresivamente la dificultad y gestionar el estado de Game Over. También se contempla el procesamiento de los ocho botones externos y la visualización de los resultados mediante los displays de siete segmentos. Para el circuito discreto se plantea un generador basado en un registro de desplazamiento con retroalimentación lineal (LFSR), formado por tres flip-flops y una compuerta XOR. Los tres bits generados se aplican a un decodificador 74LS138 para seleccionar uno de ocho LEDs. Posteriormente, un registro 74LS165 permite convertir la información paralela de la posición a una secuencia serial que será enviada a la FPGA.
 Al momento de elaboración del informe, la generación y visualización del número de tres bits se encuentra en implementación física en protoboard, mientras que la transmisión UART y la integración completa con la FPGA constituyen etapas posteriores de desarrollo.
 
-### Introduccion
+## Introduccion
 El proyecto consiste en desarrollar un sistema híbrido basado en una FPGA y un circuito implementado con lógica discreta. El objetivo es reproducir el funcionamiento básico de un juego Whack-a-mole, en el cual un topo aparece en una de ocho posiciones y el jugador debe presionar el botón correspondiente antes de que finalice el tiempo disponible. Una característica fundamental del proyecto es que la generación de la posición del topo no se realiza dentro de la FPGA. Esta función corresponde a un circuito montado en protoboard utilizando circuitos integrados de la familia 74xx. El circuito discreto determina pseudoaleatoriamente una posición, la representa mediante un LED y posteriormente transmite la posición a la FPGA mediante un enlace serial. Esta separación entre ambos sistemas forma parte fundamental del propósito del proyecto. La FPGA, por su parte, se encarga del control general del juego. Esta división permite trabajar simultáneamente con circuitos secuenciales y combinacionales implementados mediante lógica discreta y con diseño RTL sintetizable sobre una FPGA. Además, ambos subsistemas deben operar con referencias temporales independientes. Por lo tanto, el reloj utilizado por el circuito discreto no debe compartirse con la FPGA; la diferencia entre dominios temporales debe resolverse mediante la comunicación serial.
 
-### Fundamentación teórica
+## Fundamentación teórica
 #### Circuitos secuenciales
 Un circuito secuencial es aquel cuyo comportamiento depende de las entradas actuales y del estado almacenado previamente. En este proyecto, los flip-flops tipo D se utilizan como elementos de memoria para almacenar los bits del LFSR. Cada flip-flop actualiza su salida con base en el valor presente en su entrada D durante el flanco activo del reloj.
 
@@ -142,11 +142,44 @@ Optimized tool selectionVoy a revisar los archivos principales del proyecto para
 - La dificultad se calcula en función del número de aciertos. A medida que aumenta el nivel, el tiempo disponible para responder se reduce, haciendo el juego más exigente.
 - La salida visual se realiza con LEDs y un display de 7 segmentos. Los LEDs indican el estado del sistema y la posición del topo activo, mientras que el display multiplexado presenta los contadores de aciertos y fallos de forma legible.
 
-### Resultados
+### Subsistema de transmisión UART
+#### Diseño 
+El sistema de transmisión de la UART se compone de un bloque generador de baud rate, un bloque contador generador de estados y de lógica combinacional, un registro de desplazamiento y un MUX que selecciona la salida. El bloque generador de baud rate está compuesto por un oscilador astable con NE555 que oscila a una frecuencia de 38.4kHz, esta frecuencia es dividida por un contador 74LS161 entre cuatro para obtener un baud rate de 9600bps, este valor fue escogido por ser un valor estándar usado comúnmente y por ser relativamente bajo en comparación con otros valores comunes. El bloque generador de estados y de lógica combinacional se compone por un contador BCD 74LS162 el cual controla distintos elementos según el numero en que se encuentre por medio de compuertas NOR, OR, XNOR y AND. Los elementos controlados por el contador y las expresiones de las compuertas se muestran a continuación:
+
+Tal como se explica en el documento de diseño el contador se pone así mismo en reset al llegar a 0, en este estado la línea de “Idle” se mantiene en 1 en la primera entrada del MUX 2:1, por esta razón “S” (selección de línea del MUX) también mantiene esta línea escogida durante el “estado 0”, el “Load” del Shift register se mantiene en 0, esperando para guardar los datos que provienen de LFSR. Al recibir la señal de “siguiente topo” a través de una OR, el contador BCD sale del reset y al llegar el siguiente flanco la línea de “Idle” se convierte en 0 para generar el bit de inicio, pero antes tanto el “Idle” como “S” pasan por un flip-flop tipo D para sincronizarse, al igual que el “Load” y reset, por los tiempos de propagación de las compuertas y el tiempo de estabilidad requerido para que el valor sea actualizado en el flanco por el contador y registro de desplazamiento.    
+
+El diseño general con compuertas se muestra a continuación:
+#### Simulaciones 
+En las simulaciones realizadas en multisim, se logro generar la señal de transmisión de forma correcta proando con distintos valores. en la siguiente imagen se muestra una señal transmisión con la siguiente secuencia:
+
+| Bit / Campo | Start | A (LSB) | B | C | D | E | F | G | H (MSB) | Stop |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Valor** | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 |
+
+#### Mediciones 
+Se realizaron mediciones experimentales para definir el porcentaje de error conjunto de los módulos UART. El reloj de frecuencia de la FPGA es los suficientemente preciso para dejar la mayor parte del margen de error a la parte de transmisión, que al estar formada por elementos menos precisos se alejaba más de los valores ideales. En la siguiente imagen se muestra el resultado del divisor de baud rate:
+Cálculo del porcentaje de error de la UART de recepción:
+Cálculo del porcentaje de error de la UART de transmisión:
+Se puede observar que el valor del módulo de recepción es extremadamente mas bajo que el del módulo de transmisión, cuyo reloj es mucho menos preciso que el de la FPGA, esto permite que el porcentaje de error se mantenga apenas por debajo del porcentaje de error máximo recomendado de 5% [], lo que facilitaría una lectura correcta de los datos sin que el receptor lea datos incorrectos.
+
+La implementación de esta sección genero problemas, ya que algunos elementos funcionaban por separado únicamente, y al conectar el conjunto la señal se distorsionaba haciendo imposible la medición y transmisión de datos. A continuación, se muestran algunas señales distorsionadas que se observaron mientras se buscaba el problema:  
+
+## Resultados
 #### Subsistema de Control
 - Se logra crear la maquina de estados correspondiente a la lógica necesaria de juego.
-- Se logra crear la función de reloj correspondiente a todo el sistema de manera general, ademas de lograr las restricciones temporales para cada uno de los niveles de dificultad sin utilizar diferentes relojes.
-- Se logra la implementación de la función de los displays ademas de la funcionalidad de las LEDs de la FPGA
-- Se logra la implementación física de los botones externos, ademas de lograr la sincronización y el debounce de los inputs.
+- Se logra crear la función de reloj correspondiente a todo el sistema de manera general, además de lograr las restricciones temporales para cada uno de los niveles de dificultad sin utilizar diferentes relojes.
+- Se logra la implementación de la función de los displays además de la funcionalidad de las LEDs de la FPGA
+- Se logra la implementación física de los botones externos, además de lograr la sincronización y el debounce de los inputs.
 - Se logra la implementación de un sistema de pruebas para la FPGA y el subsistema de control de manera aislada, por lo que se puede revisar el subsistema por si solo.
+
+#### Subsistema de transmisión (Sistema discreto)
+El módulo de transmisión de la UART no logro aplicarse exitosamente a pesar de modificaciones, como cambios de baud rate y de lógica. Al aplicar cambios en el baud rate se observó una mejor calidad de señal en el osciloscopio, calidad que conservó al pasar por otras compuertas. Los cambios de lógica se realizaron de forma experimental, por lo que no se realizó una simulación previa, el objetivo de este cambio fue comprobar si la calidad de la señal se esta viendo perjudicada por la cantidad de compuertas que se esta utilizando, o si una de estas podría estar generando el problema de comunicación, tras la reducción de compuertas mejoro la calidad de la señal transmitida. Es posible que el problema fuese tanto el número y elección de compuertas como la velocidad de la tasa de transmisión de bits.
+- Se logra diseñar un modulo generador de baud rate exitosamente.
+- Se generan las salidas correctas del contador generador de estados.
+- Se genera un resultado correcto en la simulación.
+- El circuito construido generaba señales ruidosas y deformes en todo el circuito al conectar la lógica.
+- Tras ajustes de lógica y baud rate se logró mejorar la calidad de la señal, sin embargo, no se logró la transmisión de datos.
+
 ### Conclusión
+En este proyecto se llevó a cabo la implementación de un juego por medio de sistemas descritos en HDL y sintetizados en una FPGA, y sistemas de lógica discreta. Para los sistemas descritos en HDL se logró desarrollar una solución aplicando y reforzando conocimientos de cursos pasados sobre el diseño de máquinas de estado, lógica combinacional, FPGA y SystemVerilog, logrando llegar a una solución que lograse cumplir con los requerimientos del proyecto. Se logro implementar una maquina de estados que controlara la secuencia de el juego, el aumento progresivo de la dificultad, la implementación de botones externos y su sincronización, el uso de displays e incluso la simulación de la parte de lógica discreta.
+Para el sistema discreto, se logro diseñar un subsistema LFSR que genera posiciones de forma pseudoaleatoria, enciende los leds acorde a la misma y con la capacidad de transmitir los 8 bits de forma paralela al registro de desplazamiento. El subsistema de transmisión de la UART no se logró implementar físicamente a pesar de funcionar en la simulación, es posible la velocidad de envío de bits escogida para este módulo no fuese la ideal y que el diseño cargado de compuertas e integrados y la elección especifica de sus modelos dificultara la ubicación real del problema. En futuros diseños se optará por un diseño mas eficiente y menos propenso a errores en la medida de lo posible, también se realizara el proceso de búsqueda de errores de una forma más eficiente en cada módulo, además, se considerara detenidamente la elección de una velocidad de operación del circuito más apta. 
