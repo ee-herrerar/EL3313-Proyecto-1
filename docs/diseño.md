@@ -182,7 +182,7 @@ UART (Universal Asynchronous Receiver Transmitter) es un protocolo de comunicaci
 
 ### Estructura del Sistema 
 #### Diagrama de Primer nivel
-El diseño del módulo de transmisión de la UART consta de las entradas “señal de siguiente topo” y de los ocho bits del módulo que genera la posición de topo. Sus salidas son los ocho bits transmitidos de forma serial, junto con un bit de inicio y uno de parada que indiquen a la FPGA en inicio y fin de la transmisión.
+El diseño del módulo de transmisión de la UART consta de las entradas “señal de siguiente topo” y de los ocho bits del módulo que genera la posición de topo. Sus salidas son los ocho bits transmitidos de forma serial, junto con un bit de inicio y uno de parada que indiquen a la FPGA el inicio y fin de la transmisión.
 
 <div align="center">
 <img src="./ImagenesDocu/DIAGRAMA NIVEL 1 UART_TX.png" width="500" height="300">
@@ -196,7 +196,7 @@ El sistema tiene un modulo que genera la tasa de transmisión de bits o baud rat
 </div>
 
 #### Diagrama de Tercer Nivel
-El siguiente diagrama de circuito está compuesto por una señal de reloj generada con un oscilador astable con 555 y un divisor de frecuencia hecho con un contador ascendente de cuatro bits, estos dos elementos se utilizarán para generar el baud rate al que se transmiten los datos. El registro de desplazamiento paralelo-serie 74LS165 se encarga de la transmisión de los 8 bits desde el decodificador a través de la línea de transmisión TX. La parte de control de secuencia se encarga de contar los bits desplazados en cada flanco del generador de baudios así como de generar y controlar las señales de “Load” en el registro de desplazamientos, el control se hace a través de un MUX 2 a 1, el cual decide entre las entradas según el numero en el que el contador se encuentre, se planea que la primera entrada se mantenga en alto y a partir de cierto numero pase a cero (tras ser activado el contador), activando así las señales de “start (0)” y “stop (1)”, las cuales se encargan de indicar al receptor el inicio y fin de la transmisión asincrónica. La segunda entrada se conecta al registro de desplazamiento y se activa después de el “start (0)” para iniciar la transmisión en serie de los bits, finalmente se regresa a la primera entrada manteniéndola en 1 o “stop”.
+El siguiente diagrama de circuito está compuesto por una señal de reloj generada con un oscilador astable con 555 y un divisor de frecuencia hecho con un contador ascendente de cuatro bits, estos dos elementos se utilizarán para generar el baud rate al que se transmiten los datos. El registro de desplazamiento paralelo-serie 74LS165 se encarga de la transmisión de los 8 bits desde el decodificador a través de la línea de transmisión TX. La parte de control de secuencia se encarga de contar los bits desplazados en cada flanco del generador de baudios así como de generar y controlar las señales de “Load” en el registro de desplazamientos, el control se hace a través de un MUX 2 a 1, el cual decide entre las entradas según el numero en el que el contador se encuentre, se planea que en la primera entrada se mantenga en alto y a partir de cierto numero pase a cero (tras ser activado el contador), activando así las señales de “start (0)” y “stop (1)”, las cuales se encargan de indicar al receptor el inicio y fin de la transmisión asincrónica. La segunda entrada se conecta al registro de desplazamiento y se activa después de el “start (0)” para iniciar la transmisión en serie de los bits, finalmente se regresa a la primera entrada manteniéndola en 1 o “stop”.
 
 <div align="center">
 <img src="./ImagenesDocu/UART-ModuloDeTransmision.png" width="400" height="600">
@@ -217,7 +217,7 @@ Ciclo de trabajo:
 $$Duty cycle = 1 - \frac{R_b}{(R_a + 2 \cdot R_b)} \times 100$$
 $$ \\text{Duty cycle} = 60\\% $$
 
-Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% []. El calculo de error del modulo receptor se presenta a continuación:
+Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% [1]. El calculo de error del modulo receptor se presenta a continuación:
 
 $$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
 
@@ -232,7 +232,7 @@ Para la generación de estados se considero el uso de un contador BCD que se enc
 <img src="./ImagenesDocu/TablaCompuertas.png" width="600" height="800">
 </div>
 
-En el caso de el load, este se mantiene en cero por dos estados esperando a que el bit de inicio aparezca tras el primer ciclo en la línea llamada “Idle” que corresponde a la primera entrada del MUX, por ende, el MUX también espera dos estados de reloj para poder pasar a la segunda entrada, a través de la que se desplaza la trama serial. El reset se activa automáticamente en 0 y sale de este estado a través de la señal externa proveniente de la FPGA, la cual solicita una nueva posición de topo.
+En el caso de el load, este se mantiene en cero por dos estados esperando a que el bit de inicio aparezca tras el primer ciclo en la línea llamada “Idle”, que corresponde a la primera entrada del MUX, por ende, el MUX también espera dos estados de reloj para poder pasar a la segunda entrada, a través de la que se desplaza la trama serial. El reset se activa automáticamente en 0 y sale de este estado a través de la señal externa proveniente de la FPGA, la cual solicita una nueva posición de topo.
 Los valores de la tabla se utilizaron para determinar las compuertas lógicas necesarias, sin embargo, el contador, el load y el reset son sincrónicos, por lo que tomando en cuenta los tiempos de propagación a través de cada compuerta y del contador, y comparándolo con el tiempo que el valor debe estar estable antes de ser actualizado en el siguiente flanco por el mismo contador y el shift register, se puede saber que los valores no se actualizara en el mismo flanco en que el valor cambia, si no, uno después. Los valores de “s” (el que elije la compuerta del MUX) y de “Idle”, a diferencia del resto, no son sincrónicos, por lo que para estos se opto por utilizar un flip-flop tipo D que actualice ambos datos de forma conjunta con el resto de datos. Para definir que compuertas se usarían se usó algebra booleana para algunos casos, a continuación, se muestran las operaciones definidas:
 
 $$ Idle =\neg{Q_B} \cdot \neg{Q_C} \cdot \neg(Q_A \oplus Q_D)$$
@@ -255,9 +255,13 @@ Diagramas del circuito con con compuertas e integrados:
 </div>
 
 ### Fuentes
-[1] 	TI Precision Labs – Microcontrollers “UART Protocol Overview”, sf. [online]: 
-      https://www.ti.com/content/dam/videos/external-videos/zh-tw/9/3816841626001/6313217959112.mp4/subassets/uart_protocol_overview_and_error_sources_0.pdf
+[1]     David Harris y Sarah Harris. Digital Design and Computer Architecture. RISC-V
+        Edition. Morgan Kaufmann, 2022, pagina 564. ´ ISBN: 978-0-12-820064-3.
 
-[2] 	R. Xie, "Design and Simulation of UART Protocol Based on FPGA," 2024 6th International Conference on Applied Machine Learning (ICAML), Dalian, China, 2024,        pp. 551-557, doi: 10.1109/ICAML64299.2024.00103.
+[2] 	TI Precision Labs – Microcontrollers “UART Protocol Overview”, sf. [online]: 
+        https://www.ti.com/content/dam/videos/external-videos/zh-tw/9/3816841626001/6313217959112.mp4/subassets/uart_protocol_overview_and_error_sources_0.pdf
 
-[3] 	W. Huang and G. Sheng, "Analysis and Research on UART Communication Protocol," 2024 4th Asia-Pacific Conference on Communications Technology and Computer          Science (ACCTCS), Shenyang, China, 2024, pp. 768-771, doi: 10.1109/ACCTCS61748.2024.00140. 
+[3] 	R. Xie, "Design and Simulation of UART Protocol Based on FPGA," 2024 6th International Conference on Applied Machine Learning (ICAML), Dalian, China, 2024,        pp. 551-557, 
+        doi:  10.1109/ICAML64299.2024.00103.
+
+[4] 	W. Huang and G. Sheng, "Analysis and Research on UART Communication Protocol," 2024 4th Asia-Pacific Conference on Communications Technology and Computer          Science (ACCTCS), Shenyang, China, 2024,         pp. 768-771, doi: 10.1109/ACCTCS61748.2024.00140. 
