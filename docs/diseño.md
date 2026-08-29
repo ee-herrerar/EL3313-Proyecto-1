@@ -219,12 +219,12 @@ $$Duty cycle = 60\% $$
 
 Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% []. El calculo de error del modulo receptor se presenta a continuación:
 
-$$ f_UART = \frac{f_fpga_clock}{(16 \times (BRG+1)} $$
+$$ f_(UART) = \frac{f_fpga_clock}{(16 \times (BRG+1)} $$
 
 Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
 
-$$ f_UART = 9600.61 $$
-$$ Error_UART = 0.006 /% $$
+$$ f_(UART) = 9600.61 $$
+$$ Error_(UART) = 0.006 /% $$
 
 Para la generación de estados se considero el uso de un contador BCD que se encarga de controlar la generación de un bit de start, controlar las señales de LOAD del registro de desplazamiento 74LS165 y de controlar la salida del MUX, este control se generaría a partir de compuertas lógicas. En la siguiente tabla se muestra cada estado del contador, a partir del cual se obtuvo la lógica combinacional.
 
