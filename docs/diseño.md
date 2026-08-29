@@ -206,7 +206,7 @@ El siguiente diagrama de circuito está compuesto por una señal de reloj genera
 El modulo transmisor de UART recibe del decodificador ocho bits paralelos generados de forma pseudoaleatoria por el LFSR, el objetivo es transmitir esta información en una trama serial hasta la FPGA, de forma que pueda obtener la ubicación del topo, el módulo de UART de recepción se encarga de muestrear a partir del bit de inicio los datos enviados. 
 Respecto a su funcionamiento, este genera una señal mediante un oscilador astable con un NE555, cuya frecuencia de 38400Hz seria divida por un contador 74LS161 entre cuatro, para generar una frecuencia de 9600, estos dos elementos conforman el modulo del generador de baudios. En un principio se tomó la decisión de definir un baud rate de 9600 bps por ser el valor estándar y ser relativamente bajo en comparación con otros valores típicos, sin embargo, la aplicación de este proyecto no requiere una alta velocidad en la transferencia de datos. A continuación, se presentan los cálculos del baud rate del módulo transmisor, empezando por el cálculo de la frecuencia de oscilación del astable con 555.
 
-$$ f = \frac{1.44}{(R_a + 2\cdotR_b)\cdotC} $$
+$$ f = \frac{1.44}{(R_a + 2 \cdot R_b)\cdotC} $$
 
 Escogiendo valores de $$R_a = 750 \Omega$$, $$R_b = 1500 \Omega$$ y $$C = 10nF$$ se obtiene una frecuencia de:
 
@@ -214,8 +214,8 @@ $$ f = 38400Hz $$
 
 Ciclo de trabajo: 
 
-$$Duty cycle = 1 - \frac{R_b}{(R_a + 2\cdotR_b)} \times 100$$
-$$Duty cycle = 60% $$
+$$Duty cycle = 1 - \frac{R_b}{(R_a + 2 \cdot R_b)} \times 100$$
+$$Duty cycle = 60\% $$
 #### Diagrama de Quinto Nivel
 
 
