@@ -215,23 +215,27 @@ $$ f = 38400Hz $$
 Ciclo de trabajo: 
 
 $$Duty cycle = 1 - \frac{R_b}{(R_a + 2 \cdot R_b)} \times 100$$
-$$Duty cycle = 60\% $$
+$$ \\text{Duty cycle} = 60\\% $$
 
 Como el valor teórico de la frecuencia es un múltiplo exacto de 9600, el porcentaje de error al dividir la frecuencia es de 0%, al menos en los cálculos teóricos, esto permite que el porcentaje de error se limite a los valores experimentales. En el caso del modulo receptor, el porcentaje de error es bastante bajo, lo que permite que el porcentaje de error conjunto del sistema UART se concentre principalmente en la parte de hardware, cumpliendo con el error máximo de un aproximado de 5% []. El calculo de error del modulo receptor se presenta a continuación:
 
-$$ f_UART = \frac{f_fpga_clock}{(16 \times (BRG+1)} $$
+$$ f_{UART} = \frac{f_{FpgaClock}}{(16 \times (BRG+1)} $$
 
 Con un BRG = 650 aproximado a partir de la misma formula y un reloj de la FPGA de 100MHz:
 
-$$ f_UART = 9600.61 $$
-$$ Error_UART = 0.006 /% $$
+$$ f_{UART} = 9600.61 $$
+$$ \text{Error}_{\\text{UART}} = 0.006\\% $$
 
 Para la generación de estados se considero el uso de un contador BCD que se encarga de controlar la generación de un bit de start, controlar las señales de LOAD del registro de desplazamiento 74LS165 y de controlar la salida del MUX, este control se generaría a partir de compuertas lógicas. En la siguiente tabla se muestra cada estado del contador, a partir del cual se obtuvo la lógica combinacional.
+
+<div align="center">
+<img src="./ImagenesDocu/TablaCompuertas.png" width="600" height="800">
+</div>
 
 En el caso de el load, este se mantiene en cero por dos estados esperando a que el bit de inicio aparezca tras el primer ciclo en la línea llamada “Idle” que corresponde a la primera entrada del MUX, por ende, el MUX también espera dos estados de reloj para poder pasar a la segunda entrada, a través de la que se desplaza la trama serial. El reset se activa automáticamente en 0 y sale de este estado a través de la señal externa proveniente de la FPGA, la cual solicita una nueva posición de topo.
 Los valores de la tabla se utilizaron para determinar las compuertas lógicas necesarias, sin embargo, el contador, el load y el reset son sincrónicos, por lo que tomando en cuenta los tiempos de propagación a través de cada compuerta y del contador, y comparándolo con el tiempo que el valor debe estar estable antes de ser actualizado en el siguiente flanco por el mismo contador y el shift register, se puede saber que los valores no se actualizara en el mismo flanco en que el valor cambia, si no, uno después. Los valores de “s” (el que elije la compuerta del MUX) y de “Idle”, a diferencia del resto, no son sincrónicos, por lo que para estos se opto por utilizar un flip-flop tipo D que actualice ambos datos de forma conjunta con el resto de datos. Para definir que compuertas se usarían se usó algebra booleana para algunos casos, a continuación, se muestran las operaciones definidas:
 
-$$ Idle = \overline{Q_B} \cdot \overline{Q_C} \cdot \\overline{Q_A \\oplus Q_D}$$
+$$ Idle =\neg{Q_B} \cdot \neg{Q_C} \cdot \neg(Q_A \oplus Q_D)$$
 
 $$ Load = Q_B + Q_C + Q_D$$
 
@@ -239,10 +243,16 @@ $$ Reset =  Q_A + Q_B + Q_C + Q_D$$
 
 $$ S = Q_B + Q_C + Q_D $$
 
-El diagrama de chips y compuertas fue montado en multisim, el esquemático se muestra a continuación:
-
 #### Diagrama de Quinto Nivel
+Diagramas del circuito con con compuertas e integrados:
 
+<div align="center">
+<img src="./ImagenesDocu/Circuito compuertas.png" width="900" height="1100">
+</div>
+
+<div align="center">
+<img src="./ImagenesDocu/Circuito integrados.png" width="900" height="1100">
+</div>
 
 ### Fuentes
 [1] 	TI Precision Labs – Microcontrollers “UART Protocol Overview”, sf. [online]: 
