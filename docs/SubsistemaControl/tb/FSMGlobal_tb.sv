@@ -9,7 +9,7 @@ module GameFSM_tb;
     logic [2:0] TopoPosicion;
     logic [2:0] TopoJugador;
     logic       BotonValido;
-    logic       Timeout;
+    logic       TiempoFuera;
     logic [1:0] FallosConsecutivos;
     logic       GameOverDone;
 
@@ -47,7 +47,7 @@ module GameFSM_tb;
         .TopoPosicion(TopoPosicion),
         .TopoJugador(TopoJugador),
         .BotonValido(BotonValido),
-        .Timeout(Timeout),
+        .TiempoFuera(TiempoFuera),
         .FallosConsecutivos(FallosConsecutivos),
         .GameOverDone(GameOverDone),
 
@@ -78,7 +78,7 @@ module GameFSM_tb;
         TopoPosicion = 3'b000;
         TopoJugador = 3'b000;
         BotonValido = 1'b0;
-        Timeout = 1'b0;
+        TiempoFuera = 1'b0;
         FallosConsecutivos = 2'b00;
         GameOverDone = 1'b0;
 
@@ -259,7 +259,7 @@ module GameFSM_tb;
 
 
         // ------------------------------------------------
-        // Prueba 7: Timeout
+        // Prueba 7: TiempoFuera
         // ------------------------------------------------
 
         // LlamadaTopo -> EsperaTopo
@@ -273,18 +273,18 @@ module GameFSM_tb;
         #1;
 
         UARTValid = 1'b0;
-        Timeout = 1'b1;
+        TiempoFuera = 1'b1;
 
         // TopoActivo -> Tiempo
         @(posedge clk);
         #1;
 
-        Timeout = 1'b0;
+        TiempoFuera = 1'b0;
 
         if (DUT.current_state == Tiempo)
-            $display("PASS: Timeout -> Tiempo");
+            $display("PASS: TiempoFuera -> Tiempo");
         else
-            $error("ERROR: Timeout no llevo a Tiempo");
+            $error("ERROR: TiempoFuera no llevo a Tiempo");
 
 
         // Tiempo -> FalloSube

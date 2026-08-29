@@ -84,7 +84,14 @@ module uart_rx #(
                 if (s_tick) begin
                     if (s_reg == 15) begin
                         s_next = '0;
-                        b_next = {rx_sync, b_reg[DBIT-1:1]};
+
+                        // Desplazamiento manual para evitar selects constantes
+                        // no soportados por algunos compiladores/ simuladores.
+                        b_next = '0;
+                        for (int i = 0; i < DBIT - 1; i = i + 1) begin
+                            b_next[i] = b_reg[i + 1];
+                        end
+                        b_next[DBIT - 1] = rx_sync;
 
                         if (n_reg == DBIT - 1) begin
                             state_next = STOP;

@@ -450,7 +450,7 @@ module TopControl_tb;
         // =================================================
 
         wait (
-            DUT.display_inst.SelectorDisplay == 2'b10
+            DUT.Display7Seg_inst.SelectorDisplay == 2'b10
         );
 
         #1;
@@ -533,7 +533,7 @@ module TopControl_tb;
         // =================================================
 
         wait (
-            DUT.display_inst.SelectorDisplay == 2'b00
+            DUT.Display7Seg_inst.SelectorDisplay == 2'b00
         );
 
         #1;

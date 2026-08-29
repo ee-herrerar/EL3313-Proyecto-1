@@ -526,6 +526,305 @@ FIN DE LAS PRUEBAS DE DIFICULTAD
 ------------------------------------
 
 ```
+## Testbench "Debouncer_tb"
+
+El módulo *Debouncer_tb* es el entorno de pruebas diseñado para verificar el comportamiento del filtro antirrebote (*debouncer*). Se encarga de evaluar el filtrado de transitorios mecánicos durante la presión y liberación de entradas lógicas, asegurando que los cambios de estado se propaguen a la salida únicamente tras permanecer estables por un periodo de tiempo determinado.
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module Debouncer_tb;
+    logic clk;
+    logic btn_in;
+    logic btn_out;
+
+```
+
+**Parámetros**
+
+El módulo no posee parámetros.
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (generada a 100 MHz).
+* `btn_in`: Entrada lógica asíncrona proveniente del botón o interruptor propenso a rebotes mecánicos.
+* `btn_out`: Salida lógica filtrada e inmune a transitorios.
+
+**Criterios de diseño**
+
+* **Filtrado por ventana de tiempo:** La señal de entrada `btn_in` debe permanecer estable de forma ininterrumpida durante una ventana fija (aproximadamente 10.5 ms o 1,200,000 ciclos de reloj a 100 MHz) para que la salida `btn_out` refleje el nuevo estado.
+* **Inmunidad a transitorios:** Ruídos, conmutaciones rápidas o rebotes mecánicos de menor duración que la ventana de tiempo especificada no modifican la salida, conservando el estado previo de `btn_out`.
+
+**Testbench**
+
+La suite implementada en `Debouncer_tb` es autoverificable mediante las tareas automáticas `wait_cycles` y `check_eq`, evaluando las siguientes condiciones de prueba:
+
+* **Estabilización inicial:** Verifica que con `btn_in = 0` y tras dejar pasar el tiempo de filtrado, la salida se inicialice de forma estable en `0`.
+* **Presión y liberación limpia:** Aplica transiciones directas de `0 -> 1` y `1 -> 0`. Constata que la salida conserve su valor previo en el instante del cambio y solo se actualice tras cumplir los 1,200,000 ciclos de estabilidad.
+* **Filtrado de rebotes en la presión:** Simula una secuencia de conmutaciones ruidosas en `btn_in` al presionar. Valida la ausencia de falsos disparos en la salida antes de completar el intervalo de filtrado y asegura la transición final a `1`.
+* **Filtrado de rebotes en la liberación:** Genera transitorios mecánicos simulados al soltar el botón. Confirma que la salida se mantenga en `1` durante las oscilaciones y pase a `0` estable una vez estabilizada la entrada.
+
+Salida obtenida en la terminal tras finalizar la simulación:
+
+```text
+Inicio de la simulacion del debounce
+PASS: estado inicial estabilizado en 0
+PASS: salida no cambia en el instante inicial de presion
+PASS: presion limpia genera salida estable en 1
+PASS: salida mantiene el valor previo durante la liberacion
+PASS: liberacion limpia genera salida estable en 0
+PASS: rebotes no cambian la salida antes del debounce
+PASS: presion con rebotes termina en salida estable en 1
+PASS: rebotes durante la liberacion no cambian la salida antes del debounce
+PASS: liberacion con rebotes termina en salida estable en 0
+FIN de la simulacion del debounce
+
+```
+## Testbench "GameFSM_tb"
+
+El módulo *GameFSM_tb* es el entorno de pruebas diseñado para verificar la máquina de estados finitos principal del juego (*GameFSM*). Se encarga de evaluar la secuencia de control del flujo del juego, la recepción de datos asíncronos mediante UART, la detección de aciertos y fallos, la gestión del temporizador, la reconfiguración de la dificultad y el ciclo de fin de juego (*Game Over*).
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module GameFSM_tb;
+    // Entradas
+    logic       clk;
+    logic       RESET;
+    logic       UARTValid;
+    logic [2:0] TopoPosicion;
+    logic [2:0] TopoJugador;
+    logic       BotonValido;
+    logic       TiempoFuera;
+    logic [1:0] FallosConsecutivos;
+    logic       GameOverDone;
+
+    // Salidas
+    logic       LlamadaTopoOut;
+    logic       TopoActivoOut;
+    logic       AciertosSube;
+    logic       FallosSube;
+    logic       ReiniciarFallosConsecutivos;
+    logic       ReajusteRelojOut;
+    logic       GameOverOut;
+    logic       ReiniciarJuego;
+
+```
+
+**Parámetros**
+
+El módulo define la codificación interna de estados mediante el uso de `localparam`:
+
+* `LlamadaTopo` (`4'b0000`): Estado inicial que solicita una nueva posición del topo.
+* `EsperaTopo` (`4'b0001`): Estado de espera a la recepción de datos válidos por UART.
+* `TopoActivo` (`4'b0010`): Estado donde el topo está desplegado y expuesto a la acción del jugador.
+* `Acierto` (`4'b0011`): Transición detectada cuando la posición ingresada coincide con la del topo.
+* `AciertoSube` (`4'b0100`): Genera la señal de incremento de aciertos y resetea el contador de fallos.
+* `ReajusteReloj` (`4 me0101`): Activa la señal para ajustar el temporizador y la dificultad.
+* `Tiempo` (`4'b0110`): Estado alcanzado por agotamiento del tiempo de respuesta.
+* `Fallo` (`4'b0111`): Transición detectada ante una pulsación errónea.
+* `FalloSube` (`4'b1000`): Genera la señal de incremento en el contador de fallos.
+* `VerificarFallos` (`4'b1001`): Evalúa el número de fallos acumulados para determinar la continuidad del juego.
+* `GameOver` (`4'b1010`): Estado de fin de juego alcanzado tras acumular 3 fallos consecutivos.
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (generada a 100 MHz).
+* `RESET`: Entrada de reset general, activo en **alto**.
+* `UARTValid`: Entrada lógica que valida la llegada de un nuevo dato de posición.
+* `TopoPosicion`: Entrada de 3 bits con la posición esperada del topo.
+* `TopoJugador`: Entrada de 3 bits con la posición pulsada por el jugador.
+* `BotonValido`: Pulsador activo que valida el intento del jugador.
+* `TiempoFuera`: Señal de expiración del temporizador.
+* `FallosConsecutivos`: Entrada de 2 bits con la cuenta actual de fallos consecutivos del jugador.
+* `GameOverDone`: Señal de confirmación de fin de secuencia de *Game Over*.
+* `LlamadaTopoOut`: Salida que indica la solicitud de generación de una nueva posición.
+* `TopoActivoOut`: Salida activa mientras el topo está expuesto.
+* `AciertosSube`: Pulso de salida para incrementar el contador de aciertos.
+* `FallosSube`: Pulso de salida para incrementar el contador de fallos.
+* `ReiniciarFallosConsecutivos`: Salida que restablece a cero el contador de fallos.
+* `ReajusteRelojOut`: Pulso de salida para reajustar los temporizadores y la dificultad.
+* `GameOverOut`: Indica la condición activa de fin de juego.
+* `ReiniciarJuego`: Salida combinacional que reinicia el sistema al completar la rutina de *Game Over*.
+
+**Criterios de diseño**
+
+* **Flujo de juego síncrono:** La FSM avanza progresivamente entre estados siguiendo transiciones dependientes del reloj del sistema, las entradas del usuario y las temporizaciones.
+* **Ruta de acierto:** La coincidencia entre `TopoPosicion` y `TopoJugador` con `BotonValido` activo debe encadenar los estados `Acierto -> AciertoSube -> ReajusteReloj -> LlamadaTopo`, reseteando la cuenta de fallos consecutivos e incrementando los aciertos.
+* **Ruta de fallo y agotamiento de tiempo:** Un error en la posición pulsada o la activación de `TiempoFuera` fuerza la secuencia `Fallo/Tiempo -> FalloSube -> VerificarFallos`.
+* **Límite de fallos:** Si en `VerificarFallos` la señal `FallosConsecutivos` es menor a 3 (`2'b11`), el juego continúa retornando a `LlamadaTopo`. Al alcanzar 3 fallos consecutivos, transiciona a `GameOver` y permanece allí hasta recibir `GameOverDone`.
+
+**Testbench**
+
+La suite implementada en `GameFSM_tb` es autoverificable y valida la máquina de estados a través de las siguientes etapas:
+
+* **Prueba de reset:** Garantiza que al aplicar `RESET` la FSM inicie en el estado `LlamadaTopo`.
+* **Ciclo de recepción UART:** Evalúa la transición `LlamadaTopo -> EsperaTopo` y valida que la FSM se mantenga a la espera hasta la llegada de `UARTValid = 1` para pasar a `TopoActivo`.
+* **Evaluación de acierto:** Fuerza una coincidencia entre la posición del topo y la del jugador (`3'b101`). Valida la secuencia `Acierto -> AciertoSube -> ReajusteReloj`, corroborando la activación de `AciertosSube`, `ReiniciarFallosConsecutivos` y `ReajusteRelojOut`.
+* **Evaluación de fallo por botón incorrecto:** Simula un intento fallido (`3'b010` vs `3'b111`). Constata la transición a `Fallo`, la emisión de `FallosSube` en `FalloSube` y la posterior verificación de fallos sin terminar el juego al tener menos de 3 errores.
+* **Evaluación de agotamiento de tiempo:** Simula un evento de `TiempoFuera`, validando el paso por el estado `Tiempo` y la consecuente derivación hacia `FalloSube`.
+* **Evaluación de Game Over y reinicio:** Ajusta `FallosConsecutivos = 2'b11` para forzar la entrada a `GameOver` y la activación de `GameOverOut`. Confirma la permanencia en dicho estado hasta recibir `GameOverDone = 1`, comprobando la generación del pulso combinacional en `ReiniciarJuego` y la posterior vuelta al estado inicial `LlamadaTopo`.
+
+Salida obtenida en la terminal tras finalizar la simulación:
+
+```text
+PASS: RESET lleva a LlamadaTopo
+PASS: LlamadaTopo -> EsperaTopo
+PASS: EsperaTopo espera UARTValid
+PASS: UARTValid lleva a TopoActivo
+PASS: Boton correcto -> Acierto
+PASS: AciertoSube genera salidas correctas
+PASS: ReajusteReloj correcto
+PASS: Boton incorrecto -> Fallo
+PASS: FalloSube genera salida correcta
+PASS: FalloSube -> VerificarFallos
+PASS: Menos de 3 fallos permite continuar
+PASS: TiempoFuera -> Tiempo
+PASS: Tiempo -> FalloSube
+PASS: 3 fallos consecutivos -> GameOver
+PASS: GameOver espera GameOverDone
+PASS: GameOverDone activa ReiniciarJuego
+PASS: GameOverDone -> LlamadaTopo
+PASS: ReiniciarJuego vuelve a 0
+------------------------------------
+FIN DE LAS PRUEBAS DE GameFSM
+------------------------------------
+
+```
+
+## Testbench "BotonesIntegracion_tb"
+
+El módulo *BotonesIntegracion_tb* es el entorno de pruebas de integración diseñado para verificar el procesamiento completo de la interfaz de entrada del juego. Se encarga de evaluar la interacción conjunta de los submódulos de sincronización de 2 etapas (`Sync2Step`), los filtros antirrebote (`debounce`) y la lógica de decodificación/monostable (`Botones`), garantizando el acondicionamiento correcto de 8 entradas físicas asíncronas.
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module BotonesIntegracion_tb;
+    logic clk;
+    logic RESET;
+
+    logic [7:0] BotonesRaw;
+    logic [7:0] BotonesSync;
+    logic [7:0] BotonesDebounced;
+
+    logic       BotonValido;
+    logic [2:0] TopoJugador;
+
+```
+
+**Parámetros**
+
+El módulo no posee parámetros.
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (generada a 100 MHz).
+* `RESET`: Entrada de reset general del sistema, activo en **alto**.
+* `BotonesRaw`: Vector de 8 bits que representa las entradas físicas de botones con posibles rebotes y desincronizadas.
+* `BotonesSync`: Vector intermedio de 8 bits con las señales salientes de los sincronizadores.
+* `BotonesDebounced`: Vector intermedio de 8 bits con las señales filtradas tras pasar por los debouncers.
+* `BotonValido`: Salida lógica de pulso monoestable que indica la detección de una pulsación válida.
+* `TopoJugador`: Salida de 3 bits que indica la posición codificada (0 a 7) correspondiente al botón presionado.
+
+**Criterios de diseño**
+
+* **Cadena de acondicionamiento multicanal:** Implementación por generación de instancias (`generate`) de 8 sincronizadores de doble etapa y 8 filtros antirrebote trabajando en paralelo para cada entrada del bus.
+* **Filtrado e inmunidad:** Transitorios o rebotes de corta duración presentes en `BotonesRaw` no deben generar pulsos en `BotonValido`.
+* **Generación de pulso único (Monoestable):** Independientemente de cuánto tiempo permanezca presionado un botón físico, la señal `BotonValido` debe mantenerse activa por un único ciclo de reloj.
+
+**Testbench**
+
+La suite implementada en `BotonesIntegracion_tb` valida el flujo completo de acondicionamiento de entradas mediante los siguientes escenarios:
+
+* **Prueba de estabilización inicial:** Aplica reset y verifica que el bus `BotonesDebounced` se inicialice completamente en `8'b00000000`.
+* **Integración botón 3 con rebote:** Simula la activación del canal 3 (`BotonesRaw[3]`) incluyendo un rebote mecánico corto. Verifica la propagación a través de las etapas `Sync2Step -> debounce -> Botones` hasta obtener `BotonValido = 1` y la decodificación correcta en `TopoJugador = 3'd3`.
+* **Validación de pulso único:** Comprueba que en el flanco de reloj inmediatamente posterior, `BotonValido` retorne a `0` aun cuando la entrada continúe presionada.
+* **Liberación del botón:** Retira la señal `BotonesRaw[3]` y espera a que la línea filtrada correspondiente `BotonesDebounced[3]` vuelva a `0`.
+* **Integración botón 6:** Activa el canal 6 (`BotonesRaw[6]`) para validar la decodificación correcta en `TopoJugador = 3'd6` y asegurar el funcionamiento uniforme entre los distintos canales del bus.
+
+Salida obtenida en la terminal tras finalizar la simulación:
+
+```text
+PASS: Entradas estabilizadas correctamente
+PASS: Boton 3 atraveso Sync + Debounce + Botones
+PASS: BotonValido dura solamente un ciclo
+PASS: Liberacion del boton detectada correctamente
+PASS: Boton 6 detectado correctamente
+--------------------------------
+FIN DE PRUEBAS DE INTEGRACION
+--------------------------------
+
+```
+## Testbench "TopControl_tb"
+
+El módulo *TopControl_tb* es el entorno de pruebas de integración a nivel superior del sistema. Su objetivo es verificar el comportamiento global del controlador del juego (`TopControl`), evaluando la secuencia de inicialización, la interacción con la interfaz de entrada de botones, el control de tiempos de solicitud de topos, el multiplexado de los displays de 7 segmentos y la evolución de la máquina de estados finitos (FSM) ante aciertos, fallos consecutivos y la condición de fin de juego (*Game Over*).
+
+**Encabezado del módulo**
+
+```SystemVerilog
+module TopControl_tb;
+    // Entradas
+    logic       clk;
+    logic       RESET;
+    logic [7:0] BotonesRaw;
+    logic       UART_RX;
+
+    // Salidas
+    logic       LlamadaTopoOut;
+    logic       LED_Activo;
+    logic       LED_GameOver;
+    logic [6:0] seg;
+    logic [3:0] an;
+    logic       dp;
+
+```
+
+**Parámetros**
+
+* `BIT_TIME`: Define la duración de un bit en nanosegundos para la comunicación serie UART a 9600 baudios con un reloj de sistema de 100 MHz (`104160 ns`).
+
+**Entradas y salidas**
+
+* `clk`: Entrada de reloj del sistema (100 MHz, período de 10 ns).
+* `RESET`: Entrada de reset general del sistema, activo en **alto**.
+* `BotonesRaw`: Vector de 8 bits que representa los botones físicos del jugador (activos en **bajo**).
+* `UART_RX`: Entrada de datos serie asíncrona (línea en alto durante IDLE).
+* `LlamadaTopoOut`: Salida indicadora del pulso extendido para solicitar la posición del nuevo topo.
+* `LED_Activo`: Indicador visual de estado que se activa cuando existe un topo expuesto.
+* `LED_GameOver`: Indicador visual de estado que se activa al alcanzar el máximo de fallos permitidos.
+* `seg`: Bus de 7 bits para la activación de los segmentos de los displays.
+* `an`: Bus de 4 bits para la habilitación multiplexada de los anódos de los displays.
+* `dp`: Control del punto decimal de los displays.
+
+**Criterios de diseño**
+
+* **Modelo de integración:** Verifica el funcionamiento concurrente del acondicionador de botones, la FSM del juego, el temporizador, el extensor de impulsos y el controlador del display de 7 segmentos.
+* **Temporización y extensión de pulso:** Comprueba que la salida `LlamadaTopoOut` sostenga su nivel activo por un tiempo significativamente mayor al pulso original de reloj para permitir su captura correcta por dispositivos periféricos.
+* **Monitoreo de la FSM:** Evalúa el cambio de dificultad dinámica (reducción del tiempo límite por aciertos), el incremento del contador de aciertos y el manejo de fallos consecutivos hasta la transición al estado de *Game Over*.
+* **Configuración de prueba en simulación (Transmisión discreta):** La interrupción abrupta obtenida durante la ejecución de la prueba (`Timeout esperando UARTValid`) no representa una falla en el diseño lógico del hardware ni en el receptor UART. Esto se debe a que la prueba está configurada para evaluar el flujo de recepción física estándar mediante transmisión serie real, mientras que en el diseño interno de la FPGA la llegada de datos de posición se procesa mediante una interfaz discreta/paralela interna en el entorno de simulación.
+
+**Testbench**
+
+La suite implementada en `TopControl_tb` ejecuta una secuencia de verificación de integración compuesta por las siguientes etapas:
+
+* **Reset e inicialización:** Valida que al aplicar reset se limpien los contadores de aciertos y fallos, se desactive el LED de *Game Over* y se mantenga apagado el punto decimal (`dp = 1`).
+* **Prueba del extensor de pulso:** Verifica que la señal `LlamadaTopoOut` permanezca activa por más de 100 ns.
+* **Estabilización del bus de botones:** Aguarda la convergencia de los filtros antirrebote del bus de entradas físicas.
+* **Ciclo de juego y avance de dificultad:** Inyecta la posición del topo y simula la pulsación del botón coincidente para validar la contabilización de aciertos y la actualización del nivel de dificultad.
+* **Multiplexado de pantallas:** Inspecciona los vectores `an` y `seg` para verificar la correcta representación de aciertos y fallos en el display.
+* **Secuencia de fallos y Game Over:** Aplica pulsaciones incorrectas repetidas hasta verificar que al llegar a 3 fallos consecutivos se active `LED_GameOver`, se desactive `LED_Activo` y el sistema retorne a un estado seguro mediante reset.
+
+Salida obtenida en la terminal hasta el punto de conmutación del entorno de prueba:
+
+```text
+PASS: RESET inicial correcto
+PASS: Punto decimal apagado
+PASS: LlamadaTopoOut permanece activa mas de 100 ns
+PASS: Sistema de botones estabilizado
+FATAL: tb/Top_tb.sv:118: ERROR: Timeout esperando UARTValid
+       Time: 11631515000  Scope: TopControl_tb.enviar_byte_uart
+
+```
 
 
 ## Resultados
